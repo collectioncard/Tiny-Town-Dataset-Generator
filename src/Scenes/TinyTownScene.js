@@ -74,7 +74,10 @@ class TinyTown extends Phaser.Scene {
     // -1 is empty
     generate_section(grid, rect){
         // decide which section to generate
-        let local_section = this.generate_nothing(rect)
+        const functions = [this.generate_nothing, this.generate_forest, this.generate_house]
+        const randomIndex = Math.floor(Math.random() * functions.length);
+
+        let local_section = functions[randomIndex].bind(this)(rect)
         for (let y = rect.y; y < rect.y+rect.h; y++) {
             for (let x = rect.x; x < rect.x+rect.w; x++) {
                 grid[y][x] = local_section[y-rect.y][x-rect.x]
@@ -110,7 +113,7 @@ class TinyTown extends Phaser.Scene {
         return this.generate_background(rect.w, rect.h, 15)
     }
     generate_house(rect){
-        return this.generate_background(rect.w, rect.h, 16)
+        return this.generate_background(rect.w, rect.h, 77)
     }
     generate_fence(rect){
         return this.generate_background(rect.w, rect.h, 17)
