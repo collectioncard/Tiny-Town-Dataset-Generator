@@ -148,11 +148,13 @@ class TinyTown extends Phaser.Scene {
         
         // loop for the top roof
         let y = 0
+        let chimney_x = this.getRandomInt(0,w-1)
         grid[y][0] = 52 + alt
         for (let x = 1; x < w-1; x++) {
             grid[y][x] = 53 + alt
         }
         grid[y][w-1] = 54 + alt
+        grid[y][chimney_x] = 55 + alt
         // loop for bottom roof
         y = 1
         grid[y][0] = 64 + alt
