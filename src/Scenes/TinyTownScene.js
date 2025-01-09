@@ -164,9 +164,19 @@ class TinyTown extends Phaser.Scene {
         // loop for walls
         for (let y = 2; y < h; y++) {
             grid[y][0] = 76 + alt
+            let window_count = this.getRandomInt(0,w-2)
+            let windows = []
+            for (let i = 0; i < window_count; i++) {
+                windows.push(this.getRandomInt(1,w-2))
+            }
+
             for (let x = 1; x < w-1; x++) {
                 grid[y][x] = 77 + alt
                 // add windows with awnings
+                if (Math.random() < 0.25){
+                    grid[y][x] = 88 + alt
+                    grid[1][x] = 67 + alt
+                }
             }
             grid[y][w-1] = 79 + alt
         }
