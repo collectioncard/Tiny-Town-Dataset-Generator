@@ -9,6 +9,34 @@ class TinyTown extends Phaser.Scene {
     }
 
     create() {
+        // If you need to lookup a tile, just swap this to true
+        let view_lookup = false
+        if (view_lookup){
+            let w = 192
+            let h = 176
+            let size = 16
+            let scale = 2
+            let grid = this.generate_lookup_grid(w/size,h/size)
+            const map = this.make.tilemap({
+                data: grid,
+                tileWidth: 16,
+                tileHeight: 16
+            })
+            const tilesheet = map.addTilesetImage("tiny_town_tiles")
+            var layer = map.createLayer(0, tilesheet, 0, 0)
+            layer.setScale(scale);
+            for (let y = 0; y < h*scale; y+=size*scale) {
+                for (let x = 0; x < w*scale; x+=size*scale) {
+                    let name = (x/size/scale+y/size/scale*w/size).toString()
+                    var text = this.add.text(x,y, name, {
+                        "fontSize" : 8,
+                        "backgroundColor" : "000000"
+                    })
+                }
+            }
+            return
+        }
+
         // 3x3 sections, each each 5x5
         let sections = {x:3, y:3}
         let section_size = 5
@@ -86,5 +114,17 @@ class TinyTown extends Phaser.Scene {
     }
     generate_fence(rect){
         return this.generate_background(rect.w, rect.h, 17)
+    }
+
+    generate_lookup_grid(w,h){
+        let grid = []
+        for (let y = 0; y < h; y++) {
+            let row = []   
+            for (let x = 0; x < w; x++) {
+                row.push(x+y*w)
+            }
+            grid.push(row)
+        }
+        return grid
     }
 }
