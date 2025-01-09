@@ -38,8 +38,8 @@ class TinyTown extends Phaser.Scene {
         }
 
         // 3x3 sections, each each 5x5
-        let sections = {x:3, y:3}
-        let section_size = 5
+        let sections = {x:2, y:2}
+        let section_size = 8
 
         let ground_grid = this.generate_background(sections.x * section_size,sections.y * section_size, 1)
         let props_grid = this.generate_background(sections.x * section_size,sections.y * section_size, 1)
@@ -113,7 +113,57 @@ class TinyTown extends Phaser.Scene {
         return this.generate_background(rect.w, rect.h, 15)
     }
     generate_house(rect){
-        return this.generate_background(rect.w, rect.h, 77)
+        let pad = 1
+        let w = this.getRandomInt(3,rect.w-pad*2)
+        let h = this.getRandomInt(3,rect.h-pad*2)
+        let small_rect = {
+            x: this.getRandomInt(pad,rect.w-w-pad),
+            y: this.getRandomInt(pad,rect.h-h-pad),
+            w:w,
+            h,h
+        }
+        console.log(rect, small_rect)
+        let from_grid =  this.generate_random_house(small_rect)
+        let padded = this.pad_grid(from_grid, rect, small_rect)
+        return padded
+    }
+    pad_grid(from_grid, to_rect, from_rect){
+        let grid = this.generate_background(to_rect.w, to_rect.h, -1)
+        for (let y = 0; y < from_rect.h; y++) {
+            for (let x = 0; x < from_rect.w; x++) {
+                grid[y+from_rect.y][x+from_rect.x] = from_grid[y][x]
+            }
+        }
+        return grid
+    }
+    generate_random_house(rect){
+        let h = rect.h
+        let w = rect.w
+        let door_x = this.getRandomInt(1,w-2)
+        let grid =  this.generate_background(rect.w, rect.h, 77)
+        // loop if windows
+        let y = 0
+        grid[y][0] = 52
+        for (let x = 1; x < w-1; x++) {
+            grid[y][x] = 53
+        }
+        grid[y][w-1] = 54
+        y = 1
+        grid[y][0] = 64
+        for (let x = 1; x < w-1; x++) {
+            grid[y][x] = 65
+        }
+        grid[y][w-1] = 66
+        
+        for (let y = 2; y < h; y++) {
+            grid[y][0] = 76
+            for (let x = 1; x < w-1; x++) {
+                grid[y][x] = 77
+            }
+            grid[y][w-1] = 79
+        }
+        grid[h-1][door_x] = 89
+        return grid
     }
     generate_fence(rect){
         return this.generate_background(rect.w, rect.h, 17)
