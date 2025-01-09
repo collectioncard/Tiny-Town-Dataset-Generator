@@ -139,30 +139,41 @@ class TinyTown extends Phaser.Scene {
     generate_random_house(rect){
         let h = rect.h
         let w = rect.w
+        // shift UV if alternate color
+        let alt = Math.random() < 0.5 ? -4 : 0
+        // generate door location
         let door_x = this.getRandomInt(1,w-2)
+        // generate background
         let grid =  this.generate_background(rect.w, rect.h, 77)
-        // loop if windows
-        let y = 0
-        grid[y][0] = 52
-        for (let x = 1; x < w-1; x++) {
-            grid[y][x] = 53
-        }
-        grid[y][w-1] = 54
-        y = 1
-        grid[y][0] = 64
-        for (let x = 1; x < w-1; x++) {
-            grid[y][x] = 65
-        }
-        grid[y][w-1] = 66
         
-        for (let y = 2; y < h; y++) {
-            grid[y][0] = 76
-            for (let x = 1; x < w-1; x++) {
-                grid[y][x] = 77
-            }
-            grid[y][w-1] = 79
+        // loop for the top roof
+        let y = 0
+        grid[y][0] = 52 + alt
+        for (let x = 1; x < w-1; x++) {
+            grid[y][x] = 53 + alt
         }
-        grid[h-1][door_x] = 89
+        grid[y][w-1] = 54 + alt
+        // loop for bottom roof
+        y = 1
+        grid[y][0] = 64 + alt
+        for (let x = 1; x < w-1; x++) {
+            grid[y][x] = 65 + alt
+        }
+        grid[y][w-1] = 66 + alt
+        
+        // loop for walls
+        for (let y = 2; y < h; y++) {
+            grid[y][0] = 76 + alt
+            for (let x = 1; x < w-1; x++) {
+                grid[y][x] = 77 + alt
+                // add windows with awnings
+            }
+            grid[y][w-1] = 79 + alt
+        }
+        // add door
+        grid[h-1][door_x] = 89 + alt
+        // add an awning over the door
+        grid[1][door_x] = 67 + alt
         return grid
     }
     generate_fence(rect){
