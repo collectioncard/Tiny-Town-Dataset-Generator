@@ -82,7 +82,7 @@ class TinyTown extends Phaser.Scene {
     generate_section(grid, rect){
         // decide which section to generate
         this.draw_debug_rect(rect);
-        const functions = [this.generate_nothing, this.generate_forest, this.generate_house]
+        const functions = [this.generate_nothing, this.generate_forest, this.generate_house, this.generate_fence]
         const randomIndex = Phaser.Math.Between(0, functions.length - 1);
 
         let local_section = functions[randomIndex].bind(this)(rect)
@@ -227,10 +227,83 @@ class TinyTown extends Phaser.Scene {
         grid[1][door_x] = 67 + alt
         return grid
     }
-    generate_fence(rect){
-        return this.fill_with_tiles(rect.w, rect.h, 17)
-    }
 
+    generate_fence(section_rect) {
+        // Padding to ensure fences don't touch section edges
+        let pad = 1;
+    
+        // Generate random size for the fence group
+        let fence_w = Phaser.Math.Between(3, section_rect.w - pad * 2);
+        let fence_h = Phaser.Math.Between(3, section_rect.h - pad * 2);
+    
+        // Random location for the fence group within the section
+        let fence_x = Phaser.Math.Between(pad, section_rect.w - fence_w - pad);
+        let fence_y = Phaser.Math.Between(pad, section_rect.h - fence_h - pad);
+    
+        // Define the rect for the fence
+        let fence_rect = {
+            x: fence_x,
+            y: fence_y,
+            w: fence_w,
+            h: fence_h
+        };
+    
+        // Create a grid for the entire section initialized to -1
+        let grid = this.fill_with_tiles(section_rect.w, section_rect.h, -1);
+    
+        // Randomly determine whether the door is on the top or bottom horizontal edge
+        let door_edge = Math.random() < 0.5 ? "top" : "bottom";
+        let door_x = Phaser.Math.Between(1, fence_rect.w - 2); // Avoid corners
+    
+        for (let y = 0; y < fence_rect.h; y++) {
+            for (let x = 0; x < fence_rect.w; x++) {
+                let global_x = fence_rect.x + x;
+                let global_y = fence_rect.y + y;
+    
+                // Top row
+                if (y === 0) {
+                    if (x === 0) {
+                        grid[global_y][global_x] = 44; // Top-left corner
+                    } else if (x === fence_rect.w - 1) {
+                        grid[global_y][global_x] = 46; // Top-right corner
+                    } else {
+                        // Place door on the top edge if chosen
+                        grid[global_y][global_x] = (door_edge === "top" && x === door_x) ? 69 : 45;
+                    }
+                }
+                // Bottom row
+                else if (y === fence_rect.h - 1) {
+                    if (x === 0) {
+                        grid[global_y][global_x] = 68; // Bottom-left corner
+                    } else if (x === fence_rect.w - 1) {
+                        grid[global_y][global_x] = 70; // Bottom-right corner
+                    } else {
+                        // Place door on the bottom edge if chosen
+                        grid[global_y][global_x] = (door_edge === "bottom" && x === door_x) ? 69 : 45;
+                    }
+                }
+                // Vertical sides
+                else {
+                    if (x === 0) {
+                        grid[global_y][global_x] = 56; // Left vertical
+                    } else if (x === fence_rect.w - 1) {
+                        grid[global_y][global_x] = 58; // Right vertical
+                    }
+                }
+            }
+        }
+    
+        // Debug drawing for the fence_rect
+        this.draw_debug_rect({
+            x: section_rect.x + fence_rect.x,
+            y: section_rect.y + fence_rect.y,
+            w: fence_rect.w,
+            h: fence_rect.h
+        }, 0xFFA500); // Orange debug outline
+    
+        return grid;
+    }
+    
     //generates a grid from the tile set, with tile id labels
     generate_lookup_grid(w,h){
         let grid = []
