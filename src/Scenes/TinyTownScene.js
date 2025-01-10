@@ -5,7 +5,7 @@ class TinyTown extends Phaser.Scene {
 
     TILEWIDTH = 16;
     TILEHEIGHT = 16
-    SCALE = 2;
+    SCALE = 1;
     VIEW_LOOKUP = false;
     DEBUG_DRAW = true;
 
@@ -45,7 +45,7 @@ class TinyTown extends Phaser.Scene {
 
         // 3x3 sections, each each 5x5
         //TODO: Should eventually make random num of sections of random sizes
-        let sections = {x:2, y:2}
+        let sections = {x:5, y:5}
         let section_size = 8
 
         let ground_grid = this.generate_background(sections.x * section_size,sections.y * section_size)
@@ -88,7 +88,9 @@ class TinyTown extends Phaser.Scene {
         let local_section = functions[randomIndex].bind(this)(rect)
         for (let y = rect.y; y < rect.y+rect.h; y++) {
             for (let x = rect.x; x < rect.x+rect.w; x++) {
-                grid[y][x] = local_section[y-rect.y][x-rect.x]
+                grid[y][x] = local_section.grid[y-rect.y][x-rect.x]
+                let path_points = local_section.path_points
+                // PATH IMPLEMENTATION
             }
         }
         return grid
@@ -137,48 +139,36 @@ class TinyTown extends Phaser.Scene {
 
     // returns a local grid of size of the rect
     generate_nothing(rect){
-        return this.fill_with_tiles(rect.w, rect.h, -1)
+        return {
+            grid : this.fill_with_tiles(rect.w, rect.h, -1),
+            path_points : [],
+        }
     }
     //returns a tile grid containing a forest
     generate_forest(rect){
-        return this.fill_with_tiles(rect.w, rect.h, 15)
+        return {
+            grid : this.fill_with_tiles(rect.w, rect.h, 15),
+            path_points : [],
+        }
     }
+
+    // House Constants
+    HOUSE_MIN_W = 3
+    HOUSE_MIN_H = 3
+    HOUSE_PADDING = 1
+
     //returns a tile grid containing a house with padding within the section
     generate_house(section_rect){
         let pad = 1 //Min padding???
-        let house_w = Phaser.Math.Between(3,section_rect.w-pad*2) //TODO: Extract 3 as min house dimensions
-        let house_h = Phaser.Math.Between(3,section_rect.h-pad*2)
+        let w = Phaser.Math.Between(this.HOUSE_MIN_W,section_rect.w-pad*2) //TODO: Extract 3 as min house dimensions
+        let h = Phaser.Math.Between(this.HOUSE_MIN_H,section_rect.h-pad*2)
         let house_rect = {
-            x: Phaser.Math.Between(pad,section_rect.w-house_w-pad),
-            y: Phaser.Math.Between(pad,section_rect.h-house_h-pad),
-            w:house_w,
-            h:house_h
+            x: Phaser.Math.Between(pad,section_rect.w-w-pad),
+            y: Phaser.Math.Between(pad,section_rect.h-h-pad),
+            w:w,
+            h:h
         }
-        console.log(section_rect, house_rect)
-        let from_grid =  this.generate_random_house(house_rect)
-        let padded = this.pad_grid(from_grid, section_rect, house_rect)
-        this.draw_debug_rect({
-            x: section_rect.x + house_rect.x,
-            y: section_rect.y + house_rect.y,
-            w: house_rect.w,
-            h: house_rect.h
-        }, 0x0000FF)
-        return padded;
-    }
-    //Pads the tile grid defined in from_grid of size and pos from_rect, into a new grid of size and position of to_rect.
-    pad_grid(from_grid, to_rect, from_rect){
-        let grid = this.fill_with_tiles(to_rect.w, to_rect.h, -1)
-        for (let y = 0; y < from_rect.h; y++) {
-            for (let x = 0; x < from_rect.w; x++) {
-                grid[y+from_rect.y][x+from_rect.x] = from_grid[y][x]
-            }
-        }
-        return grid
-    }
-    //returns a tile grid containing a house, fitted to the house_rect
-    generate_random_house(house_rect){
-        let h = house_rect.h
-        let w = house_rect.w
+
         // TileId offset randomly picked between the two house variants
         let alt = Math.random() < 0.5 ? -4 : 0
         // generate door location
@@ -225,6 +215,39 @@ class TinyTown extends Phaser.Scene {
         grid[h-1][door_x] = 89 + alt
         // add an awning over the door
         grid[1][door_x] = 67 + alt
+
+        let padded = this.pad_grid(grid, section_rect, house_rect)
+        this.draw_debug_rect({
+            x: section_rect.x + house_rect.x,
+            y: section_rect.y + house_rect.y,
+            w: house_rect.w,
+            h: house_rect.h
+        }, 0x0000FF)
+
+        let door_global_position = {
+            x : section_rect.x + house_rect.x + door_x,
+            y : section_rect.y + house_rect.y + h-1,
+        }
+        this.draw_debug_rect({
+            x: door_global_position.x,
+            y: door_global_position.y,
+            w: 1,
+            h: 1,
+        }, 0x0000FF)
+
+        return {
+            grid : padded,
+            path_points : [door_global_position],
+        }
+    }
+    //Pads the tile grid defined in from_grid of size and pos from_rect, into a new grid of size and position of to_rect.
+    pad_grid(from_grid, to_rect, from_rect){
+        let grid = this.fill_with_tiles(to_rect.w, to_rect.h, -1)
+        for (let y = 0; y < from_rect.h; y++) {
+            for (let x = 0; x < from_rect.w; x++) {
+                grid[y+from_rect.y][x+from_rect.x] = from_grid[y][x]
+            }
+        }
         return grid
     }
 
@@ -300,8 +323,22 @@ class TinyTown extends Phaser.Scene {
             w: fence_rect.w,
             h: fence_rect.h
         }, 0xFFA500); // Orange debug outline
+
+        let door_global_position = {
+            x : section_rect.x + fence_rect.x + door_x,
+            y : section_rect.y + fence_rect.y + (door_edge == "bottom" ? fence_h-1 : 0),
+        }
+        this.draw_debug_rect({
+            x: door_global_position.x,
+            y: door_global_position.y,
+            w: 1,
+            h: 1,
+        }, 0xFFA500); // Orange debug outline
     
-        return grid;
+        return {
+            grid : grid,
+            path_points : [door_global_position],
+        }
     }
     
     //generates a grid from the tile set, with tile id labels
