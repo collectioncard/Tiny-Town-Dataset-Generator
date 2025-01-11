@@ -8,6 +8,15 @@ class TinyTown extends Phaser.Scene {
     SCALE = 1;
     VIEW_LOOKUP = false;
     DEBUG_DRAW = true;
+    DEBUG_PATH = true;
+
+    //Path Data
+    VALID_PATH_TILES = [
+        -1, //empty space
+        69, //fence door
+        89, //house door
+    ];
+    PATH_ENDPOINTS = [];
 
     preload() {
         this.load.setPath("./assets/");
@@ -74,6 +83,11 @@ class TinyTown extends Phaser.Scene {
             let layer = map.createLayer(0, tilesheet, 0, 0)
             layer.setScale(this.SCALE);
         });
+
+        //Now that generation is complete we can build roads between sections
+        if (this.DEBUG_PATH) console.log("Path Endpoints: ", this.PATH_ENDPOINTS);
+
+        this.generate_path(props_grid).then(console.log("Path generation complete"));
     }
 
     // generates a section of the map
@@ -89,10 +103,12 @@ class TinyTown extends Phaser.Scene {
         for (let y = rect.y; y < rect.y+rect.h; y++) {
             for (let x = rect.x; x < rect.x+rect.w; x++) {
                 grid[y][x] = local_section.grid[y-rect.y][x-rect.x]
-                let path_points = local_section.path_points
-                // PATH IMPLEMENTATION
             }
         }
+
+        //Keep track of path endpoints for later generation
+        this.PATH_ENDPOINTS.push(...local_section.path_points);
+
         return grid
     }
 
@@ -420,4 +436,68 @@ class TinyTown extends Phaser.Scene {
         }
         return grid
     }
+
+    //Calculates the manhattan distance of a path. This counts in cardinal directions
+    // which makes it a bit more accurate than euclidean distance for pathfinding.
+    calculateManhattanDistance(path){
+        let totalDistance = 0;
+
+        for (let i = 0; i < path.length - 1; i++) {
+            const step1 = path[i];
+            const step2 = path[i + 1];
+            const distance =
+                Math.abs(step2.x - step1.x) + Math.abs(step2.y - step1.y);
+            totalDistance += distance; // Sum of distances
+        }
+
+        return totalDistance;
+    }
+
+    async generate_path(grid) {
+        // Ok, so this is how this algorithm works:
+        // 1. Create a graph connecting all path endpoints to each other using a*. Each will have a link to all other endpoints.
+        // 2. Use Kruskal's algorithm to find the minimum spanning tree of the graph.
+        // 3. Draw the minimum spanning tree on the grid.
+        // 4. Profit.
+
+        let pathGenerator = new EasyStar.js();
+        console.log("Grid we workin with: ", grid);
+        pathGenerator.setGrid(grid);
+        pathGenerator.setAcceptableTiles(this.VALID_PATH_TILES);
+
+        const coordinates = this.PATH_ENDPOINTS;
+        const edges = [];
+
+        //Step 1:
+        const pathPromises = coordinates.flatMap((startPoint, i) =>
+            coordinates.slice(i + 1).map((endPoint) =>
+                new Promise((resolve) => {
+                    const {x: startX, y: startY} = startPoint;
+                    const {x: endX, y: endY} = endPoint;
+
+                    pathGenerator.findPath(startX, startY, endX, endY, (path) => {
+                        if (path) {
+                            edges.push({
+                                startPoint,
+                                endPoint,
+                                path,
+                                distance: this.calculateManhattanDistance(path),
+                            });
+                        }
+                        resolve();
+                    });
+                    pathGenerator.calculate();
+                })
+            )
+        );
+
+        await Promise.all(pathPromises);
+
+        console.log("Edges: ", edges);
+
+        //Step 2:
+        // TODO: finish this
+    }
+
+
 }
