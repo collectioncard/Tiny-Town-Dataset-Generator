@@ -146,8 +146,75 @@ class TinyTown extends Phaser.Scene {
     }
     //returns a tile grid containing a forest
     generate_forest(rect){
+        
+        const TILE_TYPES = {
+            bushes: {
+                green: [5, 17, 28],
+                yellow: 27,
+            },
+            trees: {
+                single: {
+                    green: [4, 16],
+                    yellow: [3, 15],
+                },
+                stack1:{
+                    green: [6, 8, 30, 32],
+                    yellow: [9, 11, 33, 35],
+                },
+                stack2:{
+                    green: [7, 19, 31, 18, 20],
+                    yellow: [10, 22, 34, 21, 23],
+                },
+            },
+        };
+
+
+        let grid = this.fill_with_tiles(rect.w, rect.h, -1)
+        let tree_chance = 0.8;
+
+        for (let y = 0; y < rect.h; y++) {
+            for (let x = 0; x < rect.w; x++) {
+
+                if (grid [y][x] !== -1 || Math.random() > tree_chance) { // random chance to skip the tile
+                    continue;
+                }
+
+                let type = Phaser.Math.Between(0, 100);
+                let color = Math.random() < 0.5 ? "green" : "yellow";
+
+                if (type < 7){
+                    grid[y][x] = 29; // 1 tile mushroom
+                } else if (type < 30){ // 1 tile bushes/trees
+                    grid[y][x] = Phaser.Utils.Array.GetRandom(TILE_TYPES.bushes[color]);
+                } else if (type < 60 && y + 1 < rect.h){ //2 tile trees
+                    let tree = TILE_TYPES.trees.single[color];
+                    if (grid[y+1][x] === -1){
+                        grid[y][x] = tree[0];
+                        grid[y+1][x] = tree[1];
+                    }
+                } else if (type < 85 && y + 1 < rect.h && x + 1 < rect.w) { // 4 tile trees (stack 1)
+                    let tree = TILE_TYPES.trees.stack1[color];
+                    if (grid[y+1][x] === -1 && grid[y][x+1] === -1 && grid[y+1][x+1] === -1){
+                        grid[y][x] = tree[0];
+                        grid[y][x+1] = tree[1];
+                        grid[y+1][x] = tree[2];
+                        grid[y+1][x+1] = tree[3];
+                    }
+                } else if (y+2 < rect.h && x-1 >= 0 && x+1 < rect.w){ // 5 tile trees (stack 2)
+                    let stack = TILE_TYPES.trees.stack2[color];
+                    if (grid[y+1][x] === -1 && grid[y+2][x] === -1 && grid[y+1][x-1] === -1 && grid[y+1][x+1] === -1){
+                        grid[y][x] = stack[0];
+                        grid[y+1][x] = stack[1];
+                        grid[y+2][x] = stack[2];
+                        grid[y+1][x-1] = stack[3];
+                        grid[y+1][x+1] = stack[4];
+                    }
+                }
+            }
+        }
+
         return {
-            grid : this.fill_with_tiles(rect.w, rect.h, 15),
+            grid : grid,
             path_points : [],
         }
     }
