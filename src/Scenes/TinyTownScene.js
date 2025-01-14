@@ -8,7 +8,7 @@ class TinyTown extends Phaser.Scene {
     SCALE = 1;
     VIEW_LOOKUP = false;
     DEBUG_DRAW = true;
-    DEBUG_PATH = true;
+    DEBUG_PATH = false;
 
     //Path Data
     VALID_PATH_TILES = [
@@ -23,7 +23,7 @@ class TinyTown extends Phaser.Scene {
         this.load.image("tiny_town_tiles", "kenny-tiny-town-tilemap-packed.png");
     }
 
-    create() {
+    async create() {
         // If you need to lookup a tile, just swap this to true
         //Replaces map generation with a display of the full tile set and each tile's id
         if (this.VIEW_LOOKUP){
@@ -72,6 +72,12 @@ class TinyTown extends Phaser.Scene {
             }
         }
 
+        //Now that generation is complete we can build roads between sections
+        if (this.DEBUG_PATH) console.log("[PATH DEBUG] Path Endpoints: ", this.PATH_ENDPOINTS);
+
+        await this.generate_path(props_grid);
+        if (this.DEBUG_PATH) console.log("[PATH DEBUG] Path generation complete");
+
         let grids = [ground_grid, props_grid]
         grids.forEach(grid => {
             const map = this.make.tilemap({
@@ -84,12 +90,6 @@ class TinyTown extends Phaser.Scene {
             layer.setScale(this.SCALE);
         });
 
-        //Now that generation is complete we can build roads between sections
-        if (this.DEBUG_PATH) console.log("[PATH DEBUG] Path Endpoints: ", this.PATH_ENDPOINTS);
-
-        this.generate_path(props_grid).then(() => {
-            if (this.DEBUG_PATH) console.log("[PATH DEBUG] Path generation complete");
-        });
     }
 
     // generates a section of the map
@@ -535,14 +535,25 @@ class TinyTown extends Phaser.Scene {
         // 5. Draw the MST paths on the grid
         mstEdges.forEach((edge) => {
             edge.path.forEach((tile) => {
-                this.add.circle(
-                    tile.x * this.TILEHEIGHT + 8,
-                    tile.y * this.TILEHEIGHT + 8,
-                    4,
-                    0x00ff00
-                );
+
+                //draw circles if debug
+                if (this.DEBUG_PATH){
+                    this.add.circle(
+                        tile.x * this.TILEHEIGHT + 8,
+                        tile.y * this.TILEHEIGHT + 8,
+                        2,
+                        0x00ff00
+                    ).setDepth(10);
+                }
+
+                //only draw if the tile is empty
+                if (grid[tile.y][tile.x] === -1) {
+                    grid[tile.y][tile.x] = 43;
+                }
+
             });
         });
+
     }
 
 
