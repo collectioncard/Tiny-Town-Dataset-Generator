@@ -85,9 +85,11 @@ class TinyTown extends Phaser.Scene {
         });
 
         //Now that generation is complete we can build roads between sections
-        if (this.DEBUG_PATH) console.log("Path Endpoints: ", this.PATH_ENDPOINTS);
+        if (this.DEBUG_PATH) console.log("[PATH DEBUG] Path Endpoints: ", this.PATH_ENDPOINTS);
 
-        this.generate_path(props_grid).then(console.log("Path generation complete"));
+        this.generate_path(props_grid).then(() => {
+            if (this.DEBUG_PATH) console.log("[PATH DEBUG] Path generation complete");
+        });
     }
 
     // generates a section of the map
@@ -461,14 +463,14 @@ class TinyTown extends Phaser.Scene {
         // 4. Profit.
 
         let pathGenerator = new EasyStar.js();
-        console.log("Grid we workin with: ", grid);
+        if (this.DEBUG_PATH) console.log("[PATH DEBUG] Grid we workin with: ", grid);
         pathGenerator.setGrid(grid);
         pathGenerator.setAcceptableTiles(this.VALID_PATH_TILES);
 
+        //Step 1:
         const coordinates = this.PATH_ENDPOINTS;
         const edges = [];
 
-        //Step 1:
         const pathPromises = coordinates.flatMap((startPoint, i) =>
             coordinates.slice(i + 1).map((endPoint) =>
                 new Promise((resolve) => {
@@ -493,11 +495,56 @@ class TinyTown extends Phaser.Scene {
 
         await Promise.all(pathPromises);
 
-        console.log("Edges: ", edges);
+        // Step 2:
+        edges.sort((a, b) => a.distance - b.distance);
+        if (this.DEBUG_PATH) console.log("[PATH DEBUG] Sorted edges: ", edges);
 
-        //Step 2:
-        // TODO: finish this
+        const parentMap = new Map();
+
+        //returns the root of the set (tree? idk...) that the point is in
+        const find = (point) => {
+            if (!parentMap.has(point)) parentMap.set(point, point);
+            if (parentMap.get(point) !== point) {
+                parentMap.set(point, find(parentMap.get(point)));
+            }
+            return parentMap.get(point);
+        };
+
+        //merges two sets together
+        const union = (pointA, pointB) => {
+            const rootA = find(pointA);
+            const rootB = find(pointB);
+            if (rootA !== rootB) parentMap.set(rootA, rootB);
+        };
+
+        //actual Kruskal's algorithm. Forms mst
+        const mstEdges = [];
+        for (const edge of edges) {
+            const { startPoint, endPoint } = edge;
+            const startKey = `${startPoint.x},${startPoint.y}`;
+            const endKey = `${endPoint.x},${endPoint.y}`;
+
+            if (find(startKey) !== find(endKey)) {
+                mstEdges.push(edge);
+                union(startKey, endKey);
+            }
+        }
+
+        if (this.DEBUG_PATH) console.log("[PATH DEBUG] Minimum Spanning Tree Edges: ", mstEdges);
+
+        // 5. Draw the MST paths on the grid
+        mstEdges.forEach((edge) => {
+            edge.path.forEach((tile) => {
+                this.add.circle(
+                    tile.x * this.TILEHEIGHT + 8,
+                    tile.y * this.TILEHEIGHT + 8,
+                    4,
+                    0x00ff00
+                );
+            });
+        });
     }
+
 
 
 }
