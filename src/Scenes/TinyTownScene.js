@@ -86,11 +86,9 @@ class TinyTown extends Phaser.Scene {
 
         // 3x3 sections, each each 5x5
         //TODO: Should eventually make random num of sections of random sizes
-        let sections = {x:5, y:5}
-        let section_size = 8
 
-        let ground_grid = this.generate_background(sections.x * section_size,sections.y * section_size)
-        let props_grid = this.fill_with_tiles(sections.x * section_size,sections.y * section_size, 1)
+        let ground_grid = this.generate_background(MAP_WIDTH * TILE_WIDTH, MAP_HEIGHT * TILE_HEIGHT)
+        let props_grid = this.fill_with_tiles(MAP_WIDTH * TILE_WIDTH, MAP_HEIGHT * TILE_HEIGHT, 1)
 
         let stack = [{ x: 0, y: 0, w: MAP_WIDTH, h: MAP_HEIGHT }];
         
