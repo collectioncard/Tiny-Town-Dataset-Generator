@@ -203,7 +203,7 @@ class TinyTown extends Phaser.Scene {
         const TILE_TYPES = {
             bushes: {
                 green: [5, 17, 28],
-                yellow: 27,
+                yellow: [27],
             },
             trees: {
                 single: {
