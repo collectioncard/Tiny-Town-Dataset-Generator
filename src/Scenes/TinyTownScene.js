@@ -8,6 +8,15 @@ class TinyTown extends Phaser.Scene {
     SCALE = 1;
     VIEW_LOOKUP = false;
     DEBUG_DRAW = true;
+    DEBUG_PATH = false;
+
+    //Path Data
+    VALID_PATH_TILES = [
+        -1, //empty space
+        69, //fence door
+        89, //house door
+    ];
+    PATH_ENDPOINTS = [];
 
     MAP_WIDTH = 40
     MAP_HEIGHT = 40
@@ -20,7 +29,7 @@ class TinyTown extends Phaser.Scene {
         this.load.image("tiny_town_tiles", "kenny-tiny-town-tilemap-packed.png");
     }
 
-    create() {
+    async create() {
         // If you need to lookup a tile, just swap this to true
         //Replaces map generation with a display of the full tile set and each tile's id
         if (this.VIEW_LOOKUP){
@@ -106,6 +115,12 @@ class TinyTown extends Phaser.Scene {
         //     }
         // }
 
+        //Now that generation is complete we can build roads between sections
+        if (this.DEBUG_PATH) console.log("[PATH DEBUG] Path Endpoints: ", this.PATH_ENDPOINTS);
+
+        await this.generate_path(props_grid);
+        if (this.DEBUG_PATH) console.log("[PATH DEBUG] Path generation complete");
+
         let grids = [ground_grid, props_grid]
         grids.forEach(grid => {
             const map = this.make.tilemap({
@@ -117,6 +132,7 @@ class TinyTown extends Phaser.Scene {
             let layer = map.createLayer(0, tilesheet, 0, 0)
             layer.setScale(this.SCALE);
         });
+
     }
 
     // generates a section of the map
@@ -125,17 +141,19 @@ class TinyTown extends Phaser.Scene {
     generate_section(grid, rect){
         // decide which section to generate
         this.draw_debug_rect(rect);
-        const functions = [this.generate_nothing, this.generate_forest, this.generate_house, this.generate_fence]
+        const functions = [this.generate_nothing, this.generate_forest, this.generate_house, this.generate_fence, this.generate_decor]
         const randomIndex = Phaser.Math.Between(0, functions.length - 1);
 
         let local_section = functions[randomIndex].bind(this)(rect)
         for (let y = rect.y; y < rect.y+rect.h; y++) {
             for (let x = rect.x; x < rect.x+rect.w; x++) {
                 grid[y][x] = local_section.grid[y-rect.y][x-rect.x]
-                let path_points = local_section.path_points
-                // PATH IMPLEMENTATION
             }
         }
+
+        //Keep track of path endpoints for later generation
+        this.PATH_ENDPOINTS.push(...local_section.path_points);
+
         return grid
     }
 
@@ -361,6 +379,30 @@ class TinyTown extends Phaser.Scene {
         return grid
     }
 
+    //returns tilegrid with single tile decor
+    generate_decor(rect) {
+        let pad = 1;
+        const DECOR_TILES = [106, 57, 130, 94, 95, 131, 107]; //tile ids
+        const decor_chance = 0.03;
+
+        let grid = this.fill_with_tiles(rect.w, rect.h, -1);
+
+        for (let y = 0; y < rect.h; y++) {
+            for (let x = 0; x < rect.w; x++) {
+                if (Math.random() < decor_chance) {
+                    grid[y][x] = Phaser.Utils.Array.GetRandom(DECOR_TILES);
+                }
+            }
+        }
+  
+        return {
+            grid: grid,
+            //decor does not generate path endpoints
+            path_points: [],
+        };
+    }
+
+
     generate_fence(section_rect) {
         // Padding to ensure fences don't touch section edges
         let pad = 1;
@@ -463,4 +505,124 @@ class TinyTown extends Phaser.Scene {
         }
         return grid
     }
+
+    //Calculates the manhattan distance of a path. This counts in cardinal directions
+    // which makes it a bit more accurate than euclidean distance for pathfinding.
+    calculateManhattanDistance(path){
+        let totalDistance = 0;
+
+        for (let i = 0; i < path.length - 1; i++) {
+            const step1 = path[i];
+            const step2 = path[i + 1];
+            const distance =
+                Math.abs(step2.x - step1.x) + Math.abs(step2.y - step1.y);
+            totalDistance += distance; // Sum of distances
+        }
+
+        return totalDistance;
+    }
+
+    async generate_path(grid) {
+        // Ok, so this is how this algorithm works:
+        // 1. Create a graph connecting all path endpoints to each other using a*. Each will have a link to all other endpoints.
+        // 2. Use Kruskal's algorithm to find the minimum spanning tree of the graph.
+        // 3. Draw the minimum spanning tree on the grid.
+        // 4. Profit.
+
+        let pathGenerator = new EasyStar.js();
+        if (this.DEBUG_PATH) console.log("[PATH DEBUG] Grid we workin with: ", grid);
+        pathGenerator.setGrid(grid);
+        pathGenerator.setAcceptableTiles(this.VALID_PATH_TILES);
+
+        //Step 1:
+        const coordinates = this.PATH_ENDPOINTS;
+        const edges = [];
+
+        const pathPromises = coordinates.flatMap((startPoint, i) =>
+            coordinates.slice(i + 1).map((endPoint) =>
+                new Promise((resolve) => {
+                    const {x: startX, y: startY} = startPoint;
+                    const {x: endX, y: endY} = endPoint;
+
+                    pathGenerator.findPath(startX, startY, endX, endY, (path) => {
+                        if (path) {
+                            edges.push({
+                                startPoint,
+                                endPoint,
+                                path,
+                                distance: this.calculateManhattanDistance(path),
+                            });
+                        }
+                        resolve();
+                    });
+                    pathGenerator.calculate();
+                })
+            )
+        );
+
+        await Promise.all(pathPromises);
+
+        // Step 2:
+        edges.sort((a, b) => a.distance - b.distance);
+        if (this.DEBUG_PATH) console.log("[PATH DEBUG] Sorted edges: ", edges);
+
+        const parentMap = new Map();
+
+        //returns the root of the set (tree? idk...) that the point is in
+        const find = (point) => {
+            if (!parentMap.has(point)) parentMap.set(point, point);
+            if (parentMap.get(point) !== point) {
+                parentMap.set(point, find(parentMap.get(point)));
+            }
+            return parentMap.get(point);
+        };
+
+        //merges two sets together
+        const union = (pointA, pointB) => {
+            const rootA = find(pointA);
+            const rootB = find(pointB);
+            if (rootA !== rootB) parentMap.set(rootA, rootB);
+        };
+
+        //actual Kruskal's algorithm. Forms mst
+        const mstEdges = [];
+        for (const edge of edges) {
+            const { startPoint, endPoint } = edge;
+            const startKey = `${startPoint.x},${startPoint.y}`;
+            const endKey = `${endPoint.x},${endPoint.y}`;
+
+            if (find(startKey) !== find(endKey)) {
+                mstEdges.push(edge);
+                union(startKey, endKey);
+            }
+        }
+
+        if (this.DEBUG_PATH) console.log("[PATH DEBUG] Minimum Spanning Tree Edges: ", mstEdges);
+
+        // 5. Draw the MST paths on the grid
+        mstEdges.forEach((edge) => {
+            edge.path.forEach((tile) => {
+
+                //draw circles if debug
+                if (this.DEBUG_PATH){
+                    this.add.circle(
+                        tile.x * this.TILEHEIGHT + 8,
+                        tile.y * this.TILEHEIGHT + 8,
+                        2,
+                        0x00ff00
+                    ).setDepth(10);
+                }
+
+                //only draw if the tile is empty
+                if (grid[tile.y][tile.x] === -1) {
+                    grid[tile.y][tile.x] = 43;
+                }
+
+            });
+        });
+
+    }
+
+
+
 }
