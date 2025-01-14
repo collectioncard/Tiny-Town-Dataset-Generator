@@ -7,8 +7,9 @@ class TinyTown extends Phaser.Scene {
     TILEHEIGHT = 16
     SCALE = 1;
     VIEW_LOOKUP = false;
-    DEBUG_DRAW = true;
+    DEBUG_DRAW = false;
     DEBUG_PATH = false;
+    DEBUG_COORDS = false;
 
     //Path Data
     VALID_PATH_TILES = [
@@ -149,7 +150,17 @@ class TinyTown extends Phaser.Scene {
             let layer = map.createLayer(0, tilesheet, 0, 0)
             layer.setScale(this.SCALE);
         });
-
+        if(this.DEBUG_COORDS){
+            for (let y = 0; y < this.MAP_HEIGHT; y+=5) {
+                for (let x = 0; x < this.MAP_WIDTH; x+=5) {
+                    let name = x.toString() + " " + y.toString()//(x/this.TILEWIDTH/scale+y/this.TILEHEIGHT/scale*w/this.TILEWIDTH).toString()
+                    this.add.text(x* this.TILEWIDTH,y * this.TILEHEIGHT, name, {
+                        "fontSize" : 8,
+                        "backgroundColor" : "000000"
+                    })
+                }
+            }
+        }
     }
 
     
