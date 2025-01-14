@@ -54,6 +54,8 @@ class TinyTown extends Phaser.Scene {
     }
 
     async create() {
+        //Debug get tile x, y from click
+        this.input.on('pointerdown', () => console.log(`${Math.floor(game.input.mousePointer.x/16)}, ${Math.floor(game.input.mousePointer.y/16)}`));
         // If you need to lookup a tile, just swap this to true
         //Replaces map generation with a display of the full tile set and each tile's id
         if (this.VIEW_LOOKUP){
