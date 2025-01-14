@@ -144,7 +144,9 @@ class TinyTown extends Phaser.Scene {
         const functions = [this.generate_nothing, this.generate_forest, this.generate_house, this.generate_fence, this.generate_decor]
         const randomIndex = Phaser.Math.Between(0, functions.length - 1);
 
-        let local_section = functions[randomIndex].bind(this)(rect)
+        let is_small = rect.w < this.SECTION_MIN_SIZE && rect.h < this.SECTION_MIN_SIZE
+        let local_section = is_small ? this.generate_nothing(rect) : functions[randomIndex].bind(this)(rect)
+
         for (let y = rect.y; y < rect.y+rect.h; y++) {
             for (let x = rect.x; x < rect.x+rect.w; x++) {
                 grid[y][x] = local_section.grid[y-rect.y][x-rect.x]
