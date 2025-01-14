@@ -13,6 +13,7 @@ class TinyTown extends Phaser.Scene {
         -1, //empty space
         69, //fence door
         89, //house door
+        85 //brown house door
     ];
     PATH_ENDPOINTS = [];
 
@@ -608,6 +609,8 @@ class TinyTown extends Phaser.Scene {
                                 path,
                                 distance: this.calculateManhattanDistance(path),
                             });
+                        } else {
+                            console.error(`No path found between ${startX},${startY} and ${endX}, ${endY}`)
                         }
                         resolve();
                     });
@@ -656,7 +659,14 @@ class TinyTown extends Phaser.Scene {
         if (this.DEBUG_PATH) console.log("[PATH DEBUG] Minimum Spanning Tree Edges: ", mstEdges);
 
         // 5. Draw the MST paths on the grid
+        let used_endpoints = [];
         mstEdges.forEach((edge) => {
+            if (used_endpoints.indexOf(edge.startPoint) === -1) {
+                used_endpoints.push(edge.startPoint);
+            }
+            if (used_endpoints.indexOf(edge.endPoint) === -1) {
+                used_endpoints.push(edge.endPoint);
+            }
             edge.path.forEach((tile) => {
 
                 //draw circles if debug
@@ -664,8 +674,8 @@ class TinyTown extends Phaser.Scene {
                     this.add.circle(
                         tile.x * TILE_HEIGHT + 8,
                         tile.y * TILE_HEIGHT + 8,
-                        2,
-                        0x00ff00
+                        3,
+                        0xff0000
                     ).setDepth(10);
                 }
 
@@ -677,8 +687,7 @@ class TinyTown extends Phaser.Scene {
             });
         });
 
-        //TODO: Get array of points that actually end up along path
-        this.add_paths_fact(this.PATH_ENDPOINTS);
+        this.add_paths_fact(used_endpoints);
 
     }
 
