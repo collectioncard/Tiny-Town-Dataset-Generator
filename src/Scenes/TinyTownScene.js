@@ -27,6 +27,31 @@ class TinyTown extends Phaser.Scene {
     SECTION_MAX_WIDTH = 12
     SECTION_MIN_WIDTH = 5
 
+    FactString = "";
+    /*TODO: Variations of output syntax? Like (x, y), x = # y = #, at # and #. Coordinate then object?
+    */
+    add_fact_from_type(rect, type_string) {
+        let new_fact = "";
+        new_fact += `${type_string} at (${rect.x}, ${rect.y})`
+        if (rect.w > 1 && rect.h > 1) { //If size is > 1x1 also give height and width info
+            new_fact += ` with width ${rect.w} and height ${rect.h}`;
+        }
+
+        new_fact += `.\n`;
+        this.FactString += new_fact;
+    }
+    add_paths_fact(endPoints) {
+        let new_fact = "";
+        if (endPoints.length > 0) {
+            new_fact += "Path connecting points: ";
+            for (let point of endPoints) {
+                new_fact += `(${point.x}, ${point.y}) `;
+            }
+        }
+        new_fact += "\n";
+        this.FactString += new_fact;
+    }
+
     preload() {
         this.load.setPath("./assets/");
         this.load.image("tiny_town_tiles", "kenny-tiny-town-tilemap-packed.png");
@@ -111,6 +136,8 @@ class TinyTown extends Phaser.Scene {
         await this.generate_path(props_grid);
         if (this.DEBUG_PATH) console.log("[PATH DEBUG] Path generation complete");
 
+        console.log(this.FactString);
+
         let grids = [ground_grid, props_grid]
         grids.forEach(grid => {
             const map = this.make.tilemap({
@@ -125,6 +152,7 @@ class TinyTown extends Phaser.Scene {
 
     }
 
+    
     // generates a section of the map
     // assume grid is filled
     // -1 is empty
@@ -265,7 +293,7 @@ class TinyTown extends Phaser.Scene {
                 }
             }
         }
-
+        this.add_fact_from_type(rect, "A forest");
         return {
             grid : grid,
             path_points : [],
@@ -275,12 +303,11 @@ class TinyTown extends Phaser.Scene {
     // House Constants
     HOUSE_MIN_W = 3
     HOUSE_MIN_H = 3
-    HOUSE_PADDING = 1
 
     //returns a tile grid containing a house with padding within the section
     generate_house(section_rect){
-        let pad = 1 //Min padding???
-        let w = Phaser.Math.Between(this.HOUSE_MIN_W,section_rect.w-pad*2) //TODO: Extract 3 as min house dimensions
+        let pad = 1
+        let w = Phaser.Math.Between(this.HOUSE_MIN_W,section_rect.w-pad*2)
         let h = Phaser.Math.Between(this.HOUSE_MIN_H,section_rect.h-pad*2)
         let house_rect = {
             x: Phaser.Math.Between(pad,section_rect.w-w-pad),
@@ -344,6 +371,13 @@ class TinyTown extends Phaser.Scene {
             h: house_rect.h
         }, 0x0000FF)
 
+        this.add_fact_from_type({
+            x: section_rect.x + house_rect.x,
+            y: section_rect.y + house_rect.y,
+            w: house_rect.w,
+            h: house_rect.h}, "A house");
+
+
         let door_global_position = {
             x : section_rect.x + house_rect.x + door_x,
             y : section_rect.y + house_rect.y + h-1,
@@ -373,8 +407,16 @@ class TinyTown extends Phaser.Scene {
 
     //returns tilegrid with single tile decor
     generate_decor(rect) {
-        let pad = 1;
         const DECOR_TILES = [106, 57, 130, 94, 95, 131, 107]; //tile ids
+        const DECOR_NAME = {
+            94: "beehive",
+            95: "target",
+            57: "wheelbarrow",
+            106: "log",
+            107: "bag",
+            130: "bucket empty",
+            131: "bucket full"
+        }
         const decor_chance = 0.03;
 
         let grid = this.fill_with_tiles(rect.w, rect.h, -1);
@@ -382,7 +424,15 @@ class TinyTown extends Phaser.Scene {
         for (let y = 0; y < rect.h; y++) {
             for (let x = 0; x < rect.w; x++) {
                 if (Math.random() < decor_chance) {
-                    grid[y][x] = Phaser.Utils.Array.GetRandom(DECOR_TILES);
+                    let decor = Phaser.Utils.Array.GetRandom(DECOR_TILES)
+                    grid[y][x] = decor;
+                    //TODO: facts
+                    this.add_fact_from_type({
+                        x: rect.x + x,
+                        y: rect.y + y,
+                        w: 1,
+                        h: 1
+                    }, `A ${DECOR_NAME[decor]}`)
                 }
             }
         }
@@ -467,6 +517,14 @@ class TinyTown extends Phaser.Scene {
             w: fence_rect.w,
             h: fence_rect.h
         }, 0xFFA500); // Orange debug outline
+
+        this.add_fact_from_type({
+            x: section_rect.x + fence_rect.x,
+            y: section_rect.y + fence_rect.y,
+            w: fence_rect.w,
+            h: fence_rect.h
+        }, "A closed fenced in area, with fences");
+        //TODO: More detailed/specific?
 
         let door_global_position = {
             x : section_rect.x + fence_rect.x + door_x,
@@ -613,8 +671,9 @@ class TinyTown extends Phaser.Scene {
             });
         });
 
+        //TODO: Get array of points that actually end up along path
+        this.add_paths_fact(this.PATH_ENDPOINTS);
+
     }
-
-
 
 }
