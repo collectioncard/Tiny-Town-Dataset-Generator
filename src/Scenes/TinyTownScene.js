@@ -13,6 +13,7 @@ class TinyTown extends Phaser.Scene {
         -1, //empty space
         69, //fence door
         89, //house door
+        85 //brown house door
     ];
     PATH_ENDPOINTS = [];
 
@@ -610,6 +611,8 @@ class TinyTown extends Phaser.Scene {
                                 path,
                                 distance: this.calculateManhattanDistance(path),
                             });
+                        } else {
+                            console.error(`No path found between ${startX},${startY} and ${endX}, ${endY}`)
                         }
                         resolve();
                     });
@@ -666,8 +669,8 @@ class TinyTown extends Phaser.Scene {
                     this.add.circle(
                         tile.x * TILE_HEIGHT + 8,
                         tile.y * TILE_HEIGHT + 8,
-                        2,
-                        0x00ff00
+                        3,
+                        0xff0000
                     ).setDepth(10);
                 }
 
