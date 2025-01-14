@@ -98,7 +98,7 @@ class TinyTown extends Phaser.Scene {
     generate_section(grid, rect){
         // decide which section to generate
         this.draw_debug_rect(rect);
-        const functions = [this.generate_nothing, this.generate_forest, this.generate_house, this.generate_fence]
+        const functions = [this.generate_nothing, this.generate_forest, this.generate_house, this.generate_fence, this.generate_decor]
         const randomIndex = Phaser.Math.Between(0, functions.length - 1);
 
         let local_section = functions[randomIndex].bind(this)(rect)
@@ -335,6 +335,30 @@ class TinyTown extends Phaser.Scene {
         }
         return grid
     }
+
+    //returns tilegrid with single tile decor
+    generate_decor(rect) {
+        let pad = 1;
+        const DECOR_TILES = [106, 57, 130, 94, 95, 131, 107]; //tile ids
+        const decor_chance = 0.03;
+
+        let grid = this.fill_with_tiles(rect.w, rect.h, -1);
+
+        for (let y = 0; y < rect.h; y++) {
+            for (let x = 0; x < rect.w; x++) {
+                if (Math.random() < decor_chance) {
+                    grid[y][x] = Phaser.Utils.Array.GetRandom(DECOR_TILES);
+                }
+            }
+        }
+  
+        return {
+            grid: grid,
+            //decor does not generate path endpoints
+            path_points: [],
+        };
+    }
+
 
     generate_fence(section_rect) {
         // Padding to ensure fences don't touch section edges
