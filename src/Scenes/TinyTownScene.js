@@ -18,6 +18,15 @@ class TinyTown extends Phaser.Scene {
     ];
     PATH_ENDPOINTS = [];
 
+    MAP_WIDTH = 40
+    MAP_HEIGHT = 40
+
+    SECTION_MAX_HEIGHT = 12
+    SECTION_MIN_HEIGHT = 5
+
+    SECTION_MAX_WIDTH = 12
+    SECTION_MIN_WIDTH = 5
+
     preload() {
         this.load.setPath("./assets/");
         this.load.image("tiny_town_tiles", "kenny-tiny-town-tilemap-packed.png");
@@ -60,15 +69,39 @@ class TinyTown extends Phaser.Scene {
         let ground_grid = this.generate_background(sections.x * section_size,sections.y * section_size)
         let props_grid = this.fill_with_tiles(sections.x * section_size,sections.y * section_size, 1)
 
-        for (let y = 0; y < sections.y; y++) {
-            for (let x = 0; x < sections.x; x++) {
-                let rect = {
-                    x:x*section_size,
-                    y:y*section_size,
-                    w:section_size,
-                    h:section_size
+        let stack = [{ x: 0, y: 0, w: this.MAP_WIDTH, h: this.MAP_HEIGHT }];
+        
+        while (stack.length > 0) {
+            let { x, y, w, h } = stack.pop();
+        
+            if (w > this.SECTION_MAX_WIDTH || h > this.SECTION_MAX_HEIGHT) {
+                let splitVertical = Phaser.Math.Between(0, 1) === 0; // Randomly choose split direction
+
+                if (splitVertical) {
+                    if (w <= this.SECTION_MIN_WIDTH * 2) {
+                        splitVertical = false; // Force horizontal split if width is too small
+                    }
+                } else {
+                    if (h <= this.SECTION_MIN_HEIGHT * 2) {
+                        splitVertical = true; // Force vertical split if height is too small
+                    }
                 }
-                props_grid = this.generate_section(props_grid, rect)
+
+                if (splitVertical) { //vertical split
+                    let split = Phaser.Math.Between(this.SECTION_MIN_WIDTH, Math.min(w - this.SECTION_MIN_WIDTH, this.SECTION_MAX_WIDTH));
+                    stack.push({ x: x, y: y, w: split, h: h });
+                    stack.push({ x: x + split, y: y, w: w - split, h: h });
+                } else { //horizontal split
+                    let split = Phaser.Math.Between(this.SECTION_MIN_HEIGHT, Math.min(h - this.SECTION_MIN_HEIGHT, this.SECTION_MAX_HEIGHT));
+                    stack.push({ x: x, y: y, w: w, h: split });
+                    stack.push({ x: x, y: y + split, w: w, h: h - split });
+                }
+
+            } else {
+                let rect = { x: x, y: y, w: w, h: h };
+                console.log(rect);
+                this.draw_debug_rect(rect);
+                props_grid = this.generate_section(props_grid, rect);
             }
         }
 
@@ -101,7 +134,9 @@ class TinyTown extends Phaser.Scene {
         const functions = [this.generate_nothing, this.generate_forest, this.generate_house, this.generate_fence, this.generate_decor]
         const randomIndex = Phaser.Math.Between(0, functions.length - 1);
 
+        //let is_small = rect.w < this.SECTION_MIN_SIZE || rect.h < this.SECTION_MIN_SIZE
         let local_section = functions[randomIndex].bind(this)(rect)
+
         for (let y = rect.y; y < rect.y+rect.h; y++) {
             for (let x = rect.x; x < rect.x+rect.w; x++) {
                 grid[y][x] = local_section.grid[y-rect.y][x-rect.x]
@@ -435,7 +470,7 @@ class TinyTown extends Phaser.Scene {
 
         let door_global_position = {
             x : section_rect.x + fence_rect.x + door_x,
-            y : section_rect.y + fence_rect.y + (door_edge == "bottom" ? fence_h-1 : 0),
+            y : section_rect.y + fence_rect.y + (door_edge === "bottom" ? fence_h-1 : 0),
         }
         this.draw_debug_rect({
             x: door_global_position.x,
