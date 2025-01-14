@@ -661,7 +661,14 @@ class TinyTown extends Phaser.Scene {
         if (this.DEBUG_PATH) console.log("[PATH DEBUG] Minimum Spanning Tree Edges: ", mstEdges);
 
         // 5. Draw the MST paths on the grid
+        let used_endpoints = [];
         mstEdges.forEach((edge) => {
+            if (used_endpoints.indexOf(edge.startPoint) === -1) {
+                used_endpoints.push(edge.startPoint);
+            }
+            if (used_endpoints.indexOf(edge.endPoint) === -1) {
+                used_endpoints.push(edge.endPoint);
+            }
             edge.path.forEach((tile) => {
 
                 //draw circles if debug
@@ -682,8 +689,7 @@ class TinyTown extends Phaser.Scene {
             });
         });
 
-        //TODO: Get array of points that actually end up along path
-        this.add_paths_fact(this.PATH_ENDPOINTS);
+        this.add_paths_fact(used_endpoints);
 
     }
 
