@@ -3,9 +3,6 @@ class TinyTown extends Phaser.Scene {
         super("tinyTown");
     }
 
-    TILEWIDTH = 16;
-    TILEHEIGHT = 16
-    SCALE = 1;
     VIEW_LOOKUP = false;
     DEBUG_DRAW = false;
     DEBUG_PATH = false;
@@ -19,8 +16,6 @@ class TinyTown extends Phaser.Scene {
     ];
     PATH_ENDPOINTS = [];
 
-    MAP_WIDTH = 40
-    MAP_HEIGHT = 40
 
     SECTION_MAX_HEIGHT = 12
     SECTION_MIN_HEIGHT = 5
@@ -65,7 +60,7 @@ class TinyTown extends Phaser.Scene {
             let w = 192
             let h = 176
             let size = 16
-            let scale = this.SCALE
+            let scale = SCALE
             let grid = this.generate_lookup_grid(w/size,h/size)
             const map = this.make.tilemap({
                 data: grid,
@@ -95,7 +90,7 @@ class TinyTown extends Phaser.Scene {
         let ground_grid = this.generate_background(sections.x * section_size,sections.y * section_size)
         let props_grid = this.fill_with_tiles(sections.x * section_size,sections.y * section_size, 1)
 
-        let stack = [{ x: 0, y: 0, w: this.MAP_WIDTH, h: this.MAP_HEIGHT }];
+        let stack = [{ x: 0, y: 0, w: MAP_WIDTH, h: MAP_HEIGHT }];
         
         while (stack.length > 0) {
             let { x, y, w, h } = stack.pop();
@@ -125,7 +120,7 @@ class TinyTown extends Phaser.Scene {
 
             } else {
                 let rect = { x: x, y: y, w: w, h: h };
-                console.log(rect);
+                //console.log(rect);
                 this.draw_debug_rect(rect);
                 props_grid = this.generate_section(props_grid, rect);
             }
@@ -148,13 +143,13 @@ class TinyTown extends Phaser.Scene {
             })
             const tilesheet = map.addTilesetImage("tiny_town_tiles")
             let layer = map.createLayer(0, tilesheet, 0, 0)
-            layer.setScale(this.SCALE);
+            layer.setScale(SCALE);
         });
         if(this.DEBUG_COORDS){
-            for (let y = 0; y < this.MAP_HEIGHT; y+=5) {
-                for (let x = 0; x < this.MAP_WIDTH; x+=5) {
-                    let name = x.toString() + " " + y.toString()//(x/this.TILEWIDTH/scale+y/this.TILEHEIGHT/scale*w/this.TILEWIDTH).toString()
-                    this.add.text(x* this.TILEWIDTH,y * this.TILEHEIGHT, name, {
+            for (let y = 0; y < MAP_HEIGHT; y+=5) {
+                for (let x = 0; x < MAP_WIDTH; x+=5) {
+                    let name = x.toString() + " " + y.toString()//(x/TILE_WIDTH/scale+y/TILE_HEIGHT/scale*w/TILE_WIDTH).toString()
+                    this.add.text(x* TILE_WIDTH,y * TILE_HEIGHT, name, {
                         "fontSize" : 8,
                         "backgroundColor" : "000000"
                     })
@@ -195,7 +190,7 @@ class TinyTown extends Phaser.Scene {
         if (!this.DEBUG_DRAW) {
             return;
         }
-        let debug_rect = this.add.rectangle(rect.x * this.TILEWIDTH * this.SCALE, rect.y * this.TILEHEIGHT * this.SCALE, rect.w * this.TILEWIDTH * this.SCALE, rect.h * this.TILEHEIGHT * this.SCALE)
+        let debug_rect = this.add.rectangle(rect.x * TILE_WIDTH * SCALE, rect.y * TILE_HEIGHT * SCALE, rect.w * TILE_WIDTH * SCALE, rect.h * TILE_HEIGHT * SCALE)
             .setDepth(5)
             .setStrokeStyle(2, color, 255);
         //Offset for origin of rectangles being their center
@@ -667,8 +662,8 @@ class TinyTown extends Phaser.Scene {
                 //draw circles if debug
                 if (this.DEBUG_PATH){
                     this.add.circle(
-                        tile.x * this.TILEHEIGHT + 8,
-                        tile.y * this.TILEHEIGHT + 8,
+                        tile.x * TILE_HEIGHT + 8,
+                        tile.y * TILE_HEIGHT + 8,
                         2,
                         0x00ff00
                     ).setDepth(10);

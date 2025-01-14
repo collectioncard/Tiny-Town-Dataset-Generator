@@ -12,6 +12,13 @@
 // debug with extreme prejudice
 "use strict"
 
+var MAP_WIDTH = 40
+var MAP_HEIGHT = 40
+
+var TILE_WIDTH = 16;
+var TILE_HEIGHT = 16
+var SCALE = 1;
+
 // game config
 let config = {
     parent: 'phaser-game',
@@ -19,8 +26,8 @@ let config = {
     render: {
         pixelArt: true  // prevent pixel art from getting blurred when scaled
     },
-    width: 640,         // 10 tiles, each 16 pixels, scaled 4x
-    height: 640,
+    width: MAP_WIDTH * TILE_WIDTH * SCALE,         // 10 tiles, each 16 pixels, scaled 4x
+    height: MAP_HEIGHT * TILE_HEIGHT * SCALE,
     scene: [TinyTown]
 }
 
