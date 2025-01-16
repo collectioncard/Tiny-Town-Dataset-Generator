@@ -19,6 +19,11 @@ var TILE_WIDTH = 16;
 var TILE_HEIGHT = 16
 var SCALE = 1
 
+var VIEW_LOOKUP = false;
+var DEBUG_DRAW = true;
+var DEBUG_PATH = false;
+var DEBUG_COORDS = false;
+
 // game config
 let config = {
     parent: 'phaser-game',
@@ -137,3 +142,23 @@ function updateProgress(current, total) {
     progressBar.style.width = percentage + '%';
     progressText.textContent = `Progress: ${Math.min(current, total)}/${total}`;
 }
+
+function toggleViewLookup() {
+    VIEW_LOOKUP = document.getElementById("viewLookup").checked;
+    console.log("VIEW_LOOKUP:", VIEW_LOOKUP);
+  }
+
+  function toggleDebugDraw() {
+    DEBUG_DRAW = document.getElementById("debugDraw").checked;
+    console.log("DEBUG_DRAW:", DEBUG_DRAW);
+  }
+
+  function toggleDebugPath() {
+    DEBUG_PATH = document.getElementById("debugPath").checked;
+    console.log("DEBUG_PATH:", DEBUG_PATH);
+  }
+
+  function toggleDebugCoords() {
+    DEBUG_COORDS = document.getElementById("debugCoords").checked;
+    console.log("DEBUG_COORDS:", DEBUG_COORDS);
+  }

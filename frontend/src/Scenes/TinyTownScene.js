@@ -1,8 +1,4 @@
 class TinyTown extends Phaser.Scene {
-    VIEW_LOOKUP = false;
-    DEBUG_DRAW = true;
-    DEBUG_PATH = false;
-    DEBUG_COORDS = false;
     runOnce;
 
     //Path Data
@@ -61,7 +57,7 @@ class TinyTown extends Phaser.Scene {
     async create() {
         // If you need to lookup a tile, just swap this to true
         //Replaces map generation with a display of the full tile set and each tile's id
-        if (this.VIEW_LOOKUP){
+        if (VIEW_LOOKUP){
             let w = 192
             let h = 176
             let size = 16
@@ -128,17 +124,17 @@ class TinyTown extends Phaser.Scene {
 
             } else {
                 let rect = { x: x, y: y, w: w, h: h };
-                console.log(rect);
+                //console.log(rect);
                 this.draw_debug_rect(rect);
                 props_grid = this.generate_section(props_grid, rect);
             }
         }
 
         //Now that generation is complete we can build roads between sections
-        if (this.DEBUG_PATH) console.log("[PATH DEBUG] Path Endpoints: ", this.PATH_ENDPOINTS);
+        if (DEBUG_PATH) console.log("[PATH DEBUG] Path Endpoints: ", this.PATH_ENDPOINTS);
 
         await this.generate_path(props_grid);
-        if (this.DEBUG_PATH) console.log("[PATH DEBUG] Path generation complete");
+        if (DEBUG_PATH) console.log("[PATH DEBUG] Path generation complete");
 
         console.log(this.FactString);
 
@@ -151,9 +147,9 @@ class TinyTown extends Phaser.Scene {
             })
             const tilesheet = map.addTilesetImage("tiny_town_tiles")
             let layer = map.createLayer(0, tilesheet, 0, 0)
-            layer.setScale(this.SCALE);
+            layer.setScale(SCALE);
         });
-        if(this.DEBUG_COORDS){
+        if(DEBUG_COORDS){
             for (let y = 0; y < MAP_HEIGHT; y+=5) {
                 for (let x = 0; x < MAP_WIDTH; x+=5) {
                     let name = x.toString() + " " + y.toString()//(x/TILE_WIDTH/scale+y/TILE_HEIGHT/scale*w/TILE_WIDTH).toString()
@@ -226,7 +222,7 @@ class TinyTown extends Phaser.Scene {
      *
      * rect: {x, y, w, h } **/
     draw_debug_rect(rect, color = 0x00FF00) {
-        if (!this.DEBUG_DRAW) {
+        if (!DEBUG_DRAW) {
             return;
         }
         let debug_rect = this.add.rectangle(rect.x * this.TILEWIDTH * this.SCALE, rect.y * this.TILEHEIGHT * this.SCALE, rect.w * this.TILEWIDTH * this.SCALE, rect.h * this.TILEHEIGHT * this.SCALE)
@@ -790,7 +786,7 @@ class TinyTown extends Phaser.Scene {
         // 4. Profit.
 
         let pathGenerator = new EasyStar.js();
-        if (this.DEBUG_PATH) console.log("[PATH DEBUG] Grid we workin with: ", grid);
+        if (DEBUG_PATH) console.log("[PATH DEBUG] Grid we workin with: ", grid);
         pathGenerator.setGrid(grid);
         pathGenerator.setAcceptableTiles(this.VALID_PATH_TILES);
 
@@ -824,7 +820,7 @@ class TinyTown extends Phaser.Scene {
 
         // Step 2:
         edges.sort((a, b) => a.distance - b.distance);
-        if (this.DEBUG_PATH) console.log("[PATH DEBUG] Sorted edges: ", edges);
+        if (DEBUG_PATH) console.log("[PATH DEBUG] Sorted edges: ", edges);
 
         const parentMap = new Map();
 
@@ -857,14 +853,14 @@ class TinyTown extends Phaser.Scene {
             }
         }
 
-        if (this.DEBUG_PATH) console.log("[PATH DEBUG] Minimum Spanning Tree Edges: ", mstEdges);
+        if (DEBUG_PATH) console.log("[PATH DEBUG] Minimum Spanning Tree Edges: ", mstEdges);
 
         // 5. Draw the MST paths on the grid
         mstEdges.forEach((edge) => {
             edge.path.forEach((tile) => {
 
                 //draw circles if debug
-                if (this.DEBUG_PATH){
+                if (DEBUG_PATH){
                     this.add.circle(
                         tile.x * this.TILEHEIGHT + 8,
                         tile.y * this.TILEHEIGHT + 8,
