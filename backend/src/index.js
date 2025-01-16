@@ -5,59 +5,37 @@ const fs = require('fs');
 const appHost = express();
 const appPort = 3000;
 
-const outputDir = 'mapOutput';
-let workingDir = outputDir + '/' + Date.now();
+let batchDirs = new Map(); // Track batch directories
 
-let mapCounter = 0;
-
-
-//create the directory for map images/text
-try {
-    fs.mkdirSync(workingDir, { recursive: true });
-    console.log('Created output directory');
-} catch (err) {
-    console.error('Unable to create working directory :( ', err);
-}
-
-//Host the website
 appHost.use(express.static('../frontend'));
 appHost.use(bodyParser.json({ limit: '50mb' }));
 
-//handle server requests
 appHost.post('/mapGenerated', (req, res) => {
-    console.log(req.body)
-    const mapImageData = req.body.image.replace(/^data:image\/png;base64,/, '');
-    const imgBuffer = Buffer.from(mapImageData, 'base64');
+    const { image: mapImageData, description: mapDescription, batchId } = req.body;
+    
+    // Get or create batch directory
+    let workingDir = batchDirs.get(batchId);
+    if (!workingDir) {
+        workingDir = `mapOutput/${batchId}`;
+        batchDirs.set(batchId, workingDir);
+        fs.mkdirSync(workingDir, { recursive: true });
+    }
 
-    const mapDescription = req.body.description;
+    // Get current count in directory
+    const fileCount = fs.readdirSync(workingDir).filter(f => f.endsWith('.png')).length;
+    
+    const imageBuffer = Buffer.from(mapImageData.replace(/^data:image\/png;base64,/, ''), 'base64');
 
-    console.log("saving!")
-
-    fs.writeFile(workingDir + "/map" + mapCounter + ".png", imgBuffer, (error) => {
-        if (error) {
-            console.log("BRO");
-            res.status(500)
-        }else {
-            fs.writeFile(workingDir + "/map" + mapCounter + ".txt", mapDescription, (error) => {
-                if (error) {
-                    res.status(500)
-                    console.log("BRO but like worse because this is just text so how did the image part work. AAAAAAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHAHA");
-                }else {
-                    res.status(200)
-                    mapCounter ++;
-                }
-            });
-        }
-    });
+    try {
+        fs.writeFileSync(`${workingDir}/map${fileCount}.png`, imageBuffer);
+        fs.writeFileSync(`${workingDir}/map${fileCount}.txt`, mapDescription);
+        res.status(200).json({ success: true, count: fileCount + 1 });
+    } catch (error) {
+        console.error('Error saving files:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
 });
-
-
 
 appHost.listen(appPort, () => {
     console.log(`Server is running at http://localhost:${appPort}`);
 });
-
-
-
-
-
