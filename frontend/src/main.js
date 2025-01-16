@@ -32,3 +32,6 @@ let config = {
 }
 
 const game = new Phaser.Game(config);
+
+let global = {};
+global.snapCount = 0;

@@ -1,12 +1,9 @@
 class TinyTown extends Phaser.Scene {
-    constructor() {
-        super("tinyTown");
-    }
-
     VIEW_LOOKUP = false;
     DEBUG_DRAW = false;
     DEBUG_PATH = false;
     DEBUG_COORDS = false;
+    runOnce;
 
     //Path Data
     VALID_PATH_TILES = [
@@ -25,6 +22,12 @@ class TinyTown extends Phaser.Scene {
     SECTION_MIN_WIDTH = 5
 
     FactString = "";
+
+    constructor() {
+        super("tinyTown");
+
+        this.FactString = "";
+    }
     /*TODO: Variations of output syntax? Like (x, y), x = # y = #, at # and #. Coordinate then object?
     */
     add_fact_from_type(rect, type_string) {
@@ -84,6 +87,9 @@ class TinyTown extends Phaser.Scene {
             }
             return
         }
+
+        this.PATH_ENDPOINTS = [];
+        this.FactString = "";
 
         // 3x3 sections, each each 5x5
         //TODO: Should eventually make random num of sections of random sizes
@@ -157,25 +163,29 @@ class TinyTown extends Phaser.Scene {
                 }
             }
         }
+
+        this.runOnce = true;
     }
 
-    hasSent = false;
-
     update() {
-        if (!this.hasSent) {
-            game.renderer.snapshot( () => {
-                this.sendMapToBackend(this.FactString);
-                this.hasSent = true;
-            }
-            )
+        //console.log("Count " + global.snapCount);
+
+        if (!this.runOnce) {
+            return;
         }
+        this.runOnce = false;
+        game.renderer.snapshot( () => {
+            this.sendMapToBackend(this.FactString);
+        }
+        )
+
     }
 
     //Sends the generated map to the backend to be saved n stuff
     sendMapToBackend(map_description) {
         const canvas = game.context.canvas;
-        //const imageData = canvas.toDataURL('image/png');
-        const imageData = game.renderer.snapshot();
+        const imageData = canvas.toDataURL('image/png');
+        //const imageData = game.renderer.snapshot();
 
         fetch('http://localhost:3000/mapGenerated', {
             method: 'POST',
@@ -191,6 +201,10 @@ class TinyTown extends Phaser.Scene {
             .catch((error) => {
                 console.error('Error:', error);
             });
+        if (global.snapCount < 5) {
+            global.snapCount++;
+            this.scene.restart();
+        }
     }
     
     // generates a section of the map
