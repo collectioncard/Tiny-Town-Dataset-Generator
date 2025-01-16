@@ -12,12 +12,15 @@
 // debug with extreme prejudice
 "use strict"
 
-var MAP_WIDTH = 40
-var MAP_HEIGHT = 40
+let MAP_WIDTH = 40
+let MAP_HEIGHT = 40
 
-var TILE_WIDTH = 16;
-var TILE_HEIGHT = 16
-var SCALE = 1
+let CANVAS_WIDTH = 640;
+let CANVAS_HEIGHT = 640;
+
+let TILE_WIDTH = 16;
+let TILE_HEIGHT = 16
+let SCALE = 1
 
 // game config
 let config = {
@@ -26,8 +29,8 @@ let config = {
     render: {
         pixelArt: true  // prevent pixel art from getting blurred when scaled
     },
-    width: MAP_WIDTH * TILE_WIDTH * SCALE,         // 10 tiles, each 16 pixels, scaled 4x
-    height: MAP_HEIGHT * TILE_HEIGHT * SCALE,
+    width: CANVAS_WIDTH,         // 10 tiles, each 16 pixels, scaled 4x
+    height: CANVAS_HEIGHT,
     scene: [TinyTown]
 }
 
@@ -45,7 +48,7 @@ let global = {
 async function generateMap() {
     return new Promise((resolve, reject) => {
         game.scene.getScene('tinyTown').scene.restart();
-        
+        game.scale.setGameSize(MAP_WIDTH * TILE_WIDTH * SCALE, MAP_HEIGHT * TILE_HEIGHT * SCALE);
         // Give scene time to initialize
         setTimeout(() => {
             const scene = game.scene.getScene('tinyTown');
