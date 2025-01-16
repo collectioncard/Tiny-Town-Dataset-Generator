@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tiny Town</title>
+    <script src="./lib/phaser.js"></script>
+    <script src="./lib/easystar-0.4.4.js"></script>
+    <script src="./src/Scenes/TinyTownScene.js"></script>
+    <script src="./src/main.js"></script>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .controls {
+            margin: 20px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        .input-group {
+            margin: 10px 0;
+        }
+        input[type="number"] {
+            width: 60px;
+            padding: 5px;
+            margin: 0 5px;
+        }
+        button {
+            padding: 8px 16px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        #progress-container {
+            width: 100%;
+            margin: 10px 0;
+        }
+        #progress-bar {
+            width: 0%;
+            height: 20px;
+            background-color: #4CAF50;
+            transition: width 0.3s ease-in-out;
+        }
+        .warning {
+            color: red;
+            margin: 5px 0;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="phaser-game"></div>
+
+    <div class="controls">
+        <div class="input-group">
+            <label>Map Size:</label>
+            <input type="number" id="mapWidth" min="5" max="80" value="40"> x
+            <input type="number" id="mapHeight" min="5" max="80" value="40">
+            <div id="sizeWarning" class="warning">Map size should be between 5x5 and 80x80!</div>
+        </div>
+        
+        <div class="input-group">
+            <label>Batch Size:</label>
+            <input type="number" id="batchSize" min="1" max="100" value="5">
+        </div>
+        
+        <div class="input-group">
+            <button id="startGen">Start Generation</button>
+            <button id="stopGen" disabled>Stop Generation</button>
+        </div>
+        
+        <div id="progress-container">
+            <div id="progress-bar"></div>
+            <div id="progress-text">Progress: 0/0</div>
+        </div>
+    </div>
+
+    <span id="description"></span>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "tiny-town-map-generator",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "tinytown_mapper": "node src/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "GNU AFFERO GENERAL PUBLIC LICENSE",
+  "description": "A simple tiny town map generator. Outputs data to be used as training data for a neural network.",
+  "dependencies": {
+    "body-parser": "^1.20.3",
+    "express": "^4.21.2"
+  }
+}
