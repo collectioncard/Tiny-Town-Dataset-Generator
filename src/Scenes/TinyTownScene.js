@@ -18,6 +18,40 @@ class TinyTown extends Phaser.Scene {
     ];
     PATH_ENDPOINTS = [];
 
+    MAP_WIDTH = 40
+    MAP_HEIGHT = 40
+
+    SECTION_MAX_HEIGHT = 12
+    SECTION_MIN_HEIGHT = 5
+
+    SECTION_MAX_WIDTH = 12
+    SECTION_MIN_WIDTH = 5
+
+    FactString = "";
+    /*TODO: Variations of output syntax? Like (x, y), x = # y = #, at # and #. Coordinate then object?
+    */
+    add_fact_from_type(rect, type_string) {
+        let new_fact = "";
+        new_fact += `${type_string} at (${rect.x}, ${rect.y})`
+        if (rect.w > 1 && rect.h > 1) { //If size is > 1x1 also give height and width info
+            new_fact += ` with width ${rect.w} and height ${rect.h}`;
+        }
+
+        new_fact += `.\n`;
+        this.FactString += new_fact;
+    }
+    add_paths_fact(endPoints) {
+        let new_fact = "";
+        if (endPoints.length > 0) {
+            new_fact += "Path connecting points: ";
+            for (let point of endPoints) {
+                new_fact += `(${point.x}, ${point.y}) `;
+            }
+        }
+        new_fact += "\n";
+        this.FactString += new_fact;
+    }
+
     preload() {
         this.load.setPath("./assets/");
         this.load.image("tiny_town_tiles", "kenny-tiny-town-tilemap-packed.png");
@@ -60,15 +94,39 @@ class TinyTown extends Phaser.Scene {
         let ground_grid = this.generate_background(sections.x * section_size,sections.y * section_size)
         let props_grid = this.fill_with_tiles(sections.x * section_size,sections.y * section_size, 1)
 
-        for (let y = 0; y < sections.y; y++) {
-            for (let x = 0; x < sections.x; x++) {
-                let rect = {
-                    x:x*section_size,
-                    y:y*section_size,
-                    w:section_size,
-                    h:section_size
+        let stack = [{ x: 0, y: 0, w: this.MAP_WIDTH, h: this.MAP_HEIGHT }];
+        
+        while (stack.length > 0) {
+            let { x, y, w, h } = stack.pop();
+        
+            if (w > this.SECTION_MAX_WIDTH || h > this.SECTION_MAX_HEIGHT) {
+                let splitVertical = Phaser.Math.Between(0, 1) === 0; // Randomly choose split direction
+
+                if (splitVertical) {
+                    if (w <= this.SECTION_MIN_WIDTH * 2) {
+                        splitVertical = false; // Force horizontal split if width is too small
+                    }
+                } else {
+                    if (h <= this.SECTION_MIN_HEIGHT * 2) {
+                        splitVertical = true; // Force vertical split if height is too small
+                    }
                 }
-                props_grid = this.generate_section(props_grid, rect)
+
+                if (splitVertical) { //vertical split
+                    let split = Phaser.Math.Between(this.SECTION_MIN_WIDTH, Math.min(w - this.SECTION_MIN_WIDTH, this.SECTION_MAX_WIDTH));
+                    stack.push({ x: x, y: y, w: split, h: h });
+                    stack.push({ x: x + split, y: y, w: w - split, h: h });
+                } else { //horizontal split
+                    let split = Phaser.Math.Between(this.SECTION_MIN_HEIGHT, Math.min(h - this.SECTION_MIN_HEIGHT, this.SECTION_MAX_HEIGHT));
+                    stack.push({ x: x, y: y, w: w, h: split });
+                    stack.push({ x: x, y: y + split, w: w, h: h - split });
+                }
+
+            } else {
+                let rect = { x: x, y: y, w: w, h: h };
+                console.log(rect);
+                this.draw_debug_rect(rect);
+                props_grid = this.generate_section(props_grid, rect);
             }
         }
 
@@ -77,6 +135,8 @@ class TinyTown extends Phaser.Scene {
 
         await this.generate_path(props_grid);
         if (this.DEBUG_PATH) console.log("[PATH DEBUG] Path generation complete");
+
+        console.log(this.FactString);
 
         let grids = [ground_grid, props_grid]
         grids.forEach(grid => {
@@ -92,6 +152,7 @@ class TinyTown extends Phaser.Scene {
 
     }
 
+    
     // generates a section of the map
     // assume grid is filled
     // -1 is empty
@@ -101,7 +162,9 @@ class TinyTown extends Phaser.Scene {
         const functions = [this.generate_nothing, this.generate_forest, this.generate_house, this.generate_fence, this.generate_decor]
         const randomIndex = Phaser.Math.Between(0, functions.length - 1);
 
+        //let is_small = rect.w < this.SECTION_MIN_SIZE || rect.h < this.SECTION_MIN_SIZE
         let local_section = functions[randomIndex].bind(this)(rect)
+
         for (let y = rect.y; y < rect.y+rect.h; y++) {
             for (let x = rect.x; x < rect.x+rect.w; x++) {
                 grid[y][x] = local_section.grid[y-rect.y][x-rect.x]
@@ -230,7 +293,7 @@ class TinyTown extends Phaser.Scene {
                 }
             }
         }
-
+        this.add_fact_from_type(rect, "A forest");
         return {
             grid : grid,
             path_points : [],
@@ -240,12 +303,11 @@ class TinyTown extends Phaser.Scene {
     // House Constants
     HOUSE_MIN_W = 3
     HOUSE_MIN_H = 3
-    HOUSE_PADDING = 1
 
     //returns a tile grid containing a house with padding within the section
     generate_house(section_rect){
-        let pad = 1 //Min padding???
-        let w = Phaser.Math.Between(this.HOUSE_MIN_W,section_rect.w-pad*2) //TODO: Extract 3 as min house dimensions
+        let pad = 1
+        let w = Phaser.Math.Between(this.HOUSE_MIN_W,section_rect.w-pad*2)
         let h = Phaser.Math.Between(this.HOUSE_MIN_H,section_rect.h-pad*2)
         let house_rect = {
             x: Phaser.Math.Between(pad,section_rect.w-w-pad),
@@ -309,6 +371,13 @@ class TinyTown extends Phaser.Scene {
             h: house_rect.h
         }, 0x0000FF)
 
+        this.add_fact_from_type({
+            x: section_rect.x + house_rect.x,
+            y: section_rect.y + house_rect.y,
+            w: house_rect.w,
+            h: house_rect.h}, "A house");
+
+
         let door_global_position = {
             x : section_rect.x + house_rect.x + door_x,
             y : section_rect.y + house_rect.y + h-1,
@@ -338,8 +407,19 @@ class TinyTown extends Phaser.Scene {
 
     //returns tilegrid with single tile decor
     generate_decor(rect) {
-        let pad = 1;
-        const DECOR_TILES = [106, 57, 130, 94, 95, 131, 107]; //tile ids
+        const DECOR_TILES = [106, 57, 130, 94, 95, 131, 107, 29,27, 28 ]; //tile ids
+        const DECOR_NAME = {
+            27: "orange tree",
+            28: "green tree",
+            29: "mushroom",
+            57: "wheelbarrow",
+            94: "beehive",
+            95: "target",
+            106: "log",
+            107: "bag",
+            130: "bucket empty",
+            131: "bucket full"
+        }
         const decor_chance = 0.03;
 
         let grid = this.fill_with_tiles(rect.w, rect.h, -1);
@@ -347,7 +427,15 @@ class TinyTown extends Phaser.Scene {
         for (let y = 0; y < rect.h; y++) {
             for (let x = 0; x < rect.w; x++) {
                 if (Math.random() < decor_chance) {
-                    grid[y][x] = Phaser.Utils.Array.GetRandom(DECOR_TILES);
+                    let decor = Phaser.Utils.Array.GetRandom(DECOR_TILES)
+                    grid[y][x] = decor;
+                    //TODO: facts
+                    this.add_fact_from_type({
+                        x: rect.x + x,
+                        y: rect.y + y,
+                        w: 1,
+                        h: 1
+                    }, `A ${DECOR_NAME[decor]}`)
                 }
             }
         }
@@ -359,19 +447,29 @@ class TinyTown extends Phaser.Scene {
         };
     }
 
-
     generate_fence(section_rect) {
+        const rand = Math.random();
+        if (rand < 0.6) {
+            return this.generate_regular_fence(section_rect);
+        } else if (rand < 0.8) {
+            return this.generate_random_fence(section_rect);
+        } else {
+            return this.generate_single_fence(section_rect);
+        }
+    }
+
+    generate_regular_fence(section_rect) {
         // Padding to ensure fences don't touch section edges
         let pad = 1;
-    
+        
         // Generate random size for the fence group
         let fence_w = Phaser.Math.Between(3, section_rect.w - pad * 2);
         let fence_h = Phaser.Math.Between(3, section_rect.h - pad * 2);
-    
+        
         // Random location for the fence group within the section
         let fence_x = Phaser.Math.Between(pad, section_rect.w - fence_w - pad);
         let fence_y = Phaser.Math.Between(pad, section_rect.h - fence_h - pad);
-    
+        
         // Define the rect for the fence
         let fence_rect = {
             x: fence_x,
@@ -379,19 +477,19 @@ class TinyTown extends Phaser.Scene {
             w: fence_w,
             h: fence_h
         };
-    
+        
         // Create a grid for the entire section initialized to -1
         let grid = this.fill_with_tiles(section_rect.w, section_rect.h, -1);
-    
+        
         // Randomly determine whether the door is on the top or bottom horizontal edge
         let door_edge = Math.random() < 0.5 ? "top" : "bottom";
         let door_x = Phaser.Math.Between(1, fence_rect.w - 2); // Avoid corners
-    
+        
         for (let y = 0; y < fence_rect.h; y++) {
             for (let x = 0; x < fence_rect.w; x++) {
                 let global_x = fence_rect.x + x;
                 let global_y = fence_rect.y + y;
-    
+        
                 // Top row
                 if (y === 0) {
                     if (x === 0) {
@@ -399,7 +497,6 @@ class TinyTown extends Phaser.Scene {
                     } else if (x === fence_rect.w - 1) {
                         grid[global_y][global_x] = 46; // Top-right corner
                     } else {
-                        // Place door on the top edge if chosen
                         grid[global_y][global_x] = (door_edge === "top" && x === door_x) ? 69 : 45;
                     }
                 }
@@ -410,7 +507,6 @@ class TinyTown extends Phaser.Scene {
                     } else if (x === fence_rect.w - 1) {
                         grid[global_y][global_x] = 70; // Bottom-right corner
                     } else {
-                        // Place door on the bottom edge if chosen
                         grid[global_y][global_x] = (door_edge === "bottom" && x === door_x) ? 69 : 45;
                     }
                 }
@@ -424,30 +520,192 @@ class TinyTown extends Phaser.Scene {
                 }
             }
         }
-    
-        // Debug drawing for the fence_rect
-        this.draw_debug_rect({
+        
+        this.add_fact_from_type({
             x: section_rect.x + fence_rect.x,
             y: section_rect.y + fence_rect.y,
             w: fence_rect.w,
             h: fence_rect.h
-        }, 0xFFA500); // Orange debug outline
-
+        }, "A closed fenced-in area, with fences");
+    
         let door_global_position = {
-            x : section_rect.x + fence_rect.x + door_x,
-            y : section_rect.y + fence_rect.y + (door_edge == "bottom" ? fence_h-1 : 0),
-        }
-        this.draw_debug_rect({
-            x: door_global_position.x,
-            y: door_global_position.y,
-            w: 1,
-            h: 1,
-        }, 0xFFA500); // Orange debug outline
+            x: section_rect.x + fence_rect.x + door_x,
+            y: section_rect.y + fence_rect.y + (door_edge === "bottom" ? fence_h - 1 : 0),
+        };
     
         return {
-            grid : grid,
-            path_points : [door_global_position],
+            grid: grid,
+            path_points: [door_global_position],
+        };
+    }
+
+    generate_random_fence(section_rect) {
+        let pad = 1; // Padding to ensure fences don't touch edges
+    
+        // Randomly decide the length of horizontal and vertical parts of the L-shaped fence
+        let horizontal_length = Phaser.Math.Between(3, section_rect.w - pad * 2);
+        let vertical_length = Phaser.Math.Between(3, section_rect.h - pad * 2);
+    
+        // Randomly decide the starting position for the fence within the section
+        let start_x = Phaser.Math.Between(pad, section_rect.w - horizontal_length - pad);
+        let start_y = Phaser.Math.Between(pad, section_rect.h - vertical_length - pad);
+    
+        // Randomly choose the orientation of the L-shape
+        let orientation = Phaser.Math.RND.pick([
+            "top-left",     // Horizontal on top, vertical on left
+            "top-right",    // Horizontal on top, vertical on right
+            "bottom-left",  // Horizontal on bottom, vertical on left
+            "bottom-right"  // Horizontal on bottom, vertical on right
+        ]);
+    
+        // Create a grid for the section initialized with -1
+        let grid = this.fill_with_tiles(section_rect.w, section_rect.h, -1);
+    
+        // Draw the L-shaped fence
+        if (orientation === "top-left") {
+            // Horizontal part on top
+            for (let x = 0; x < horizontal_length; x++) {
+                let global_x = start_x + x;
+                let global_y = start_y;
+                if (x === 0) {
+                    grid[global_y][global_x] = 44; // Start of horizontal fence
+                } else if (x === horizontal_length - 1) {
+                    grid[global_y][global_x] = 82; // Turning point to vertical fence
+                } else {
+                    grid[global_y][global_x] = 45; // Middle of horizontal fence
+                }
+            }
+            // Vertical part on the left
+            for (let y = 1; y < vertical_length; y++) {
+                let global_x = start_x;
+                let global_y = start_y + y;
+                if (y === vertical_length - 1) {
+                    grid[global_y][global_x] = 71; // End of vertical fence
+                } else {
+                    grid[global_y][global_x] = 56; // Middle of vertical fence
+                }
+            }
+        } else if (orientation === "top-right") {
+            // Horizontal part on top
+            for (let x = 0; x < horizontal_length; x++) {
+                let global_x = start_x + x;
+                let global_y = start_y;
+                if (x === 0) {
+                    grid[global_y][global_x] = 80; // Start of horizontal fence
+                } else if (x === horizontal_length - 1) {
+                    grid[global_y][global_x] = 46; // Turning point to vertical fence
+                } else {
+                    grid[global_y][global_x] = 45; // Middle of horizontal fence
+                }
+            }
+            // Vertical part on the right
+            for (let y = 1; y < vertical_length; y++) {
+                let global_x = start_x + horizontal_length - 1;
+                let global_y = start_y + y;
+                if (y === vertical_length - 1) {
+                    grid[global_y][global_x] = 71; // End of vertical fence
+                } else {
+                    grid[global_y][global_x] = 58; // Middle of vertical fence
+                }
+            }
+        } else if (orientation === "bottom-left") {
+            // Vertical part on the left
+            for (let y = 0; y < vertical_length; y++) {
+                let global_x = start_x;
+                let global_y = start_y + y;
+                if (y === 0) {
+                    grid[global_y][global_x] = 47; // Start of vertical fence
+                } else if (y === vertical_length - 1) {
+                    grid[global_y][global_x] = 68; // Turning point to horizontal fence
+                } else {
+                    grid[global_y][global_x] = 56; // Middle of vertical fence
+                }
+            }
+            // Horizontal part on bottom
+            for (let x = 1; x < horizontal_length; x++) {
+                let global_x = start_x + x;
+                let global_y = start_y + vertical_length - 1;
+                if (x === horizontal_length - 1) {
+                    grid[global_y][global_x] = 82; // End of horizontal fence
+                } else {
+                    grid[global_y][global_x] = 45; // Middle of horizontal fence
+                }
+            }
+        } else if (orientation === "bottom-right") {
+            // Vertical part on the right
+            for (let y = 0; y < vertical_length; y++) {
+                let global_x = start_x + horizontal_length - 1;
+                let global_y = start_y + y;
+                if (y === 0) {
+                    grid[global_y][global_x] = 47; // Start of vertical fence
+                } else if (y === vertical_length - 1) {
+                    grid[global_y][global_x] = 70; // Turning point to horizontal fence
+                } else {
+                    grid[global_y][global_x] = 58; // Middle of vertical fence
+                }
+            }
+            // Horizontal part on bottom
+            for (let x = 0; x < horizontal_length - 1; x++) {
+                let global_x = start_x + x;
+                let global_y = start_y + vertical_length - 1;
+                if (x === 0) {
+                    grid[global_y][global_x] = 80; // Start of horizontal fence
+                } else {
+                    grid[global_y][global_x] = 45; // Middle of horizontal fence
+                }
+            }
         }
+    
+        // Log the fence details
+        this.add_fact_from_type({
+            x: section_rect.x + start_x,
+            y: section_rect.y + start_y,
+            w: horizontal_length,
+            h: vertical_length
+        }, "A random L-shaped fence");
+    
+        return {
+            grid: grid,
+            path_points: [], // No doors for paths in random fences
+        };
+    }
+    
+    generate_single_fence(section_rect) {
+        let pad = 1;
+        let isHorizontal = Math.random() < 0.5;
+    
+        let length = Phaser.Math.Between(3, (isHorizontal ? section_rect.w : section_rect.h) - pad * 2);
+        let start_x = isHorizontal
+            ? Phaser.Math.Between(pad, section_rect.w - length - pad)
+            : Phaser.Math.Between(pad, section_rect.w - 1 - pad);
+        let start_y = isHorizontal
+            ? Phaser.Math.Between(pad, section_rect.h - 1 - pad)
+            : Phaser.Math.Between(pad, section_rect.h - length - pad);
+    
+        let grid = this.fill_with_tiles(section_rect.w, section_rect.h, -1);
+    
+        if (isHorizontal) {
+            for (let x = 0; x < length; x++) {
+                let global_x = start_x + x;
+                let global_y = start_y;
+                grid[global_y][global_x] = x === 0 ? 80 : x === length - 1 ? 82 : 45;
+            }
+        } else {
+            for (let y = 0; y < length; y++) {
+                let global_x = start_x;
+                let global_y = start_y + y;
+                grid[global_y][global_x] = y === 0 ? 47 : y === length - 1 ? 71 : 59;
+            }
+        }
+    
+        this.add_fact_from_type({
+            x: section_rect.x + start_x,
+            y: section_rect.y + start_y,
+            w: isHorizontal ? length : 1,
+            h: isHorizontal ? 1 : length
+        }, "A single line fence");
+    
+        return { grid: grid, path_points: [] };
     }
     
     //generates a grid from the tile set, with tile id labels
@@ -578,8 +836,9 @@ class TinyTown extends Phaser.Scene {
             });
         });
 
+        //TODO: Get array of points that actually end up along path
+        this.add_paths_fact(this.PATH_ENDPOINTS);
+
     }
-
-
 
 }
