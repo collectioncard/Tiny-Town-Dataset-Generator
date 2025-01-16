@@ -159,6 +159,39 @@ class TinyTown extends Phaser.Scene {
         }
     }
 
+    hasSent = false;
+
+    update() {
+        if (!this.hasSent) {
+            game.renderer.snapshot( () => {
+                this.sendMapToBackend(this.FactString);
+                this.hasSent = true;
+            }
+            )
+        }
+    }
+
+    //Sends the generated map to the backend to be saved n stuff
+    sendMapToBackend(map_description) {
+        const canvas = game.context.canvas;
+        //const imageData = canvas.toDataURL('image/png');
+        const imageData = game.renderer.snapshot();
+
+        fetch('http://localhost:3000/mapGenerated', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ image: imageData, description: map_description }),
+        })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Success:', data);
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+    }
     
     // generates a section of the map
     // assume grid is filled
