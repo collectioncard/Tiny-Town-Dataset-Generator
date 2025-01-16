@@ -391,6 +391,7 @@ class TinyTown extends Phaser.Scene {
         grid[y][w-1] = 66 + alt
         
         let window_chance = 0.6
+        let window_count = 0
         // loop for walls
         for (let y = 2; y < h; y++) {
             grid[y][0] = 76 + alt
@@ -402,8 +403,10 @@ class TinyTown extends Phaser.Scene {
                     grid[y][x] = 88 + alt
                     grid[1][x] = 67 + alt
                     window_chance -= 0.2
+                    window_count ++
                 }
             }
+            window_chance += 0.2
             grid[y][w-1] = 79 + alt
         }
         // add door
@@ -419,11 +422,13 @@ class TinyTown extends Phaser.Scene {
             h: house_rect.h
         }, 0x0000FF)
 
+        let house_description = "A " + (alt == 0 ? "gray" : "brown") + " House with " + window_count.toString() + " windows"
+
         this.add_fact_from_type({
             x: section_rect.x + house_rect.x,
             y: section_rect.y + house_rect.y,
             w: house_rect.w,
-            h: house_rect.h}, "A house");
+            h: house_rect.h}, house_description);
 
 
         let door_global_position = {
