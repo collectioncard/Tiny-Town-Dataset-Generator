@@ -3,20 +3,23 @@ class TinyTown extends Phaser.Scene {
         super("tinyTown");
     }
 
+    TILEWIDTH = 16;
+    TILEHEIGHT = 16
+    SCALE = 1;
     VIEW_LOOKUP = false;
-    DEBUG_DRAW = false;
+    DEBUG_DRAW = true;
     DEBUG_PATH = false;
-    DEBUG_COORDS = false;
 
     //Path Data
     VALID_PATH_TILES = [
         -1, //empty space
         69, //fence door
         89, //house door
-        85 //brown house door
     ];
     PATH_ENDPOINTS = [];
 
+    MAP_WIDTH = 40
+    MAP_HEIGHT = 40
 
     SECTION_MAX_HEIGHT = 12
     SECTION_MIN_HEIGHT = 5
@@ -55,15 +58,13 @@ class TinyTown extends Phaser.Scene {
     }
 
     async create() {
-        //Debug get tile x, y from click
-        this.input.on('pointerdown', () => console.log(`${Math.floor(game.input.mousePointer.x/16)}, ${Math.floor(game.input.mousePointer.y/16)}`));
         // If you need to lookup a tile, just swap this to true
         //Replaces map generation with a display of the full tile set and each tile's id
         if (this.VIEW_LOOKUP){
             let w = 192
             let h = 176
             let size = 16
-            let scale = SCALE
+            let scale = this.SCALE
             let grid = this.generate_lookup_grid(w/size,h/size)
             const map = this.make.tilemap({
                 data: grid,
@@ -87,11 +88,13 @@ class TinyTown extends Phaser.Scene {
 
         // 3x3 sections, each each 5x5
         //TODO: Should eventually make random num of sections of random sizes
+        let sections = {x:5, y:5}
+        let section_size = 8
 
-        let ground_grid = this.generate_background(MAP_WIDTH * TILE_WIDTH, MAP_HEIGHT * TILE_HEIGHT)
-        let props_grid = this.fill_with_tiles(MAP_WIDTH * TILE_WIDTH, MAP_HEIGHT * TILE_HEIGHT, 1)
+        let ground_grid = this.generate_background(sections.x * section_size,sections.y * section_size)
+        let props_grid = this.fill_with_tiles(sections.x * section_size,sections.y * section_size, 1)
 
-        let stack = [{ x: 0, y: 0, w: MAP_WIDTH, h: MAP_HEIGHT }];
+        let stack = [{ x: 0, y: 0, w: this.MAP_WIDTH, h: this.MAP_HEIGHT }];
         
         while (stack.length > 0) {
             let { x, y, w, h } = stack.pop();
@@ -121,7 +124,7 @@ class TinyTown extends Phaser.Scene {
 
             } else {
                 let rect = { x: x, y: y, w: w, h: h };
-                //console.log(rect);
+                console.log(rect);
                 this.draw_debug_rect(rect);
                 props_grid = this.generate_section(props_grid, rect);
             }
@@ -144,19 +147,9 @@ class TinyTown extends Phaser.Scene {
             })
             const tilesheet = map.addTilesetImage("tiny_town_tiles")
             let layer = map.createLayer(0, tilesheet, 0, 0)
-            layer.setScale(SCALE);
+            layer.setScale(this.SCALE);
         });
-        if(this.DEBUG_COORDS){
-            for (let y = 0; y < MAP_HEIGHT; y+=5) {
-                for (let x = 0; x < MAP_WIDTH; x+=5) {
-                    let name = x.toString() + " " + y.toString()//(x/TILE_WIDTH/scale+y/TILE_HEIGHT/scale*w/TILE_WIDTH).toString()
-                    this.add.text(x* TILE_WIDTH,y * TILE_HEIGHT, name, {
-                        "fontSize" : 8,
-                        "backgroundColor" : "000000"
-                    })
-                }
-            }
-        }
+
     }
 
     
@@ -191,7 +184,7 @@ class TinyTown extends Phaser.Scene {
         if (!this.DEBUG_DRAW) {
             return;
         }
-        let debug_rect = this.add.rectangle(rect.x * TILE_WIDTH * SCALE, rect.y * TILE_HEIGHT * SCALE, rect.w * TILE_WIDTH * SCALE, rect.h * TILE_HEIGHT * SCALE)
+        let debug_rect = this.add.rectangle(rect.x * this.TILEWIDTH * this.SCALE, rect.y * this.TILEHEIGHT * this.SCALE, rect.w * this.TILEWIDTH * this.SCALE, rect.h * this.TILEHEIGHT * this.SCALE)
             .setDepth(5)
             .setStrokeStyle(2, color, 255);
         //Offset for origin of rectangles being their center
@@ -238,7 +231,7 @@ class TinyTown extends Phaser.Scene {
         const TILE_TYPES = {
             bushes: {
                 green: [5, 17, 28],
-                yellow: [27],
+                yellow: 27,
             },
             trees: {
                 single: {
@@ -451,19 +444,29 @@ class TinyTown extends Phaser.Scene {
         };
     }
 
-
     generate_fence(section_rect) {
+        const rand = Math.random();
+        if (rand < 0.6) {
+            return this.generate_regular_fence(section_rect);
+        } else if (rand < 0.8) {
+            return this.generate_random_fence(section_rect);
+        } else {
+            return this.generate_single_fence(section_rect);
+        }
+    }
+
+    generate_regular_fence(section_rect) {
         // Padding to ensure fences don't touch section edges
         let pad = 1;
-    
+        
         // Generate random size for the fence group
         let fence_w = Phaser.Math.Between(3, section_rect.w - pad * 2);
         let fence_h = Phaser.Math.Between(3, section_rect.h - pad * 2);
-    
+        
         // Random location for the fence group within the section
         let fence_x = Phaser.Math.Between(pad, section_rect.w - fence_w - pad);
         let fence_y = Phaser.Math.Between(pad, section_rect.h - fence_h - pad);
-    
+        
         // Define the rect for the fence
         let fence_rect = {
             x: fence_x,
@@ -471,19 +474,19 @@ class TinyTown extends Phaser.Scene {
             w: fence_w,
             h: fence_h
         };
-    
+        
         // Create a grid for the entire section initialized to -1
         let grid = this.fill_with_tiles(section_rect.w, section_rect.h, -1);
-    
+        
         // Randomly determine whether the door is on the top or bottom horizontal edge
         let door_edge = Math.random() < 0.5 ? "top" : "bottom";
         let door_x = Phaser.Math.Between(1, fence_rect.w - 2); // Avoid corners
-    
+        
         for (let y = 0; y < fence_rect.h; y++) {
             for (let x = 0; x < fence_rect.w; x++) {
                 let global_x = fence_rect.x + x;
                 let global_y = fence_rect.y + y;
-    
+        
                 // Top row
                 if (y === 0) {
                     if (x === 0) {
@@ -491,7 +494,6 @@ class TinyTown extends Phaser.Scene {
                     } else if (x === fence_rect.w - 1) {
                         grid[global_y][global_x] = 46; // Top-right corner
                     } else {
-                        // Place door on the top edge if chosen
                         grid[global_y][global_x] = (door_edge === "top" && x === door_x) ? 69 : 45;
                     }
                 }
@@ -502,7 +504,6 @@ class TinyTown extends Phaser.Scene {
                     } else if (x === fence_rect.w - 1) {
                         grid[global_y][global_x] = 70; // Bottom-right corner
                     } else {
-                        // Place door on the bottom edge if chosen
                         grid[global_y][global_x] = (door_edge === "bottom" && x === door_x) ? 69 : 45;
                     }
                 }
@@ -516,38 +517,192 @@ class TinyTown extends Phaser.Scene {
                 }
             }
         }
-    
-        // Debug drawing for the fence_rect
-        this.draw_debug_rect({
-            x: section_rect.x + fence_rect.x,
-            y: section_rect.y + fence_rect.y,
-            w: fence_rect.w,
-            h: fence_rect.h
-        }, 0xFFA500); // Orange debug outline
-
+        
         this.add_fact_from_type({
             x: section_rect.x + fence_rect.x,
             y: section_rect.y + fence_rect.y,
             w: fence_rect.w,
             h: fence_rect.h
-        }, "A closed fenced in area, with fences");
-        //TODO: More detailed/specific?
-
+        }, "A closed fenced-in area, with fences");
+    
         let door_global_position = {
-            x : section_rect.x + fence_rect.x + door_x,
-            y : section_rect.y + fence_rect.y + (door_edge === "bottom" ? fence_h-1 : 0),
-        }
-        this.draw_debug_rect({
-            x: door_global_position.x,
-            y: door_global_position.y,
-            w: 1,
-            h: 1,
-        }, 0xFFA500); // Orange debug outline
+            x: section_rect.x + fence_rect.x + door_x,
+            y: section_rect.y + fence_rect.y + (door_edge === "bottom" ? fence_h - 1 : 0),
+        };
     
         return {
-            grid : grid,
-            path_points : [door_global_position],
+            grid: grid,
+            path_points: [door_global_position],
+        };
+    }
+
+    generate_random_fence(section_rect) {
+        let pad = 1; // Padding to ensure fences don't touch edges
+    
+        // Randomly decide the length of horizontal and vertical parts of the L-shaped fence
+        let horizontal_length = Phaser.Math.Between(3, section_rect.w - pad * 2);
+        let vertical_length = Phaser.Math.Between(3, section_rect.h - pad * 2);
+    
+        // Randomly decide the starting position for the fence within the section
+        let start_x = Phaser.Math.Between(pad, section_rect.w - horizontal_length - pad);
+        let start_y = Phaser.Math.Between(pad, section_rect.h - vertical_length - pad);
+    
+        // Randomly choose the orientation of the L-shape
+        let orientation = Phaser.Math.RND.pick([
+            "top-left",     // Horizontal on top, vertical on left
+            "top-right",    // Horizontal on top, vertical on right
+            "bottom-left",  // Horizontal on bottom, vertical on left
+            "bottom-right"  // Horizontal on bottom, vertical on right
+        ]);
+    
+        // Create a grid for the section initialized with -1
+        let grid = this.fill_with_tiles(section_rect.w, section_rect.h, -1);
+    
+        // Draw the L-shaped fence
+        if (orientation === "top-left") {
+            // Horizontal part on top
+            for (let x = 0; x < horizontal_length; x++) {
+                let global_x = start_x + x;
+                let global_y = start_y;
+                if (x === 0) {
+                    grid[global_y][global_x] = 44; // Start of horizontal fence
+                } else if (x === horizontal_length - 1) {
+                    grid[global_y][global_x] = 82; // Turning point to vertical fence
+                } else {
+                    grid[global_y][global_x] = 45; // Middle of horizontal fence
+                }
+            }
+            // Vertical part on the left
+            for (let y = 1; y < vertical_length; y++) {
+                let global_x = start_x;
+                let global_y = start_y + y;
+                if (y === vertical_length - 1) {
+                    grid[global_y][global_x] = 71; // End of vertical fence
+                } else {
+                    grid[global_y][global_x] = 56; // Middle of vertical fence
+                }
+            }
+        } else if (orientation === "top-right") {
+            // Horizontal part on top
+            for (let x = 0; x < horizontal_length; x++) {
+                let global_x = start_x + x;
+                let global_y = start_y;
+                if (x === 0) {
+                    grid[global_y][global_x] = 80; // Start of horizontal fence
+                } else if (x === horizontal_length - 1) {
+                    grid[global_y][global_x] = 46; // Turning point to vertical fence
+                } else {
+                    grid[global_y][global_x] = 45; // Middle of horizontal fence
+                }
+            }
+            // Vertical part on the right
+            for (let y = 1; y < vertical_length; y++) {
+                let global_x = start_x + horizontal_length - 1;
+                let global_y = start_y + y;
+                if (y === vertical_length - 1) {
+                    grid[global_y][global_x] = 71; // End of vertical fence
+                } else {
+                    grid[global_y][global_x] = 58; // Middle of vertical fence
+                }
+            }
+        } else if (orientation === "bottom-left") {
+            // Vertical part on the left
+            for (let y = 0; y < vertical_length; y++) {
+                let global_x = start_x;
+                let global_y = start_y + y;
+                if (y === 0) {
+                    grid[global_y][global_x] = 47; // Start of vertical fence
+                } else if (y === vertical_length - 1) {
+                    grid[global_y][global_x] = 68; // Turning point to horizontal fence
+                } else {
+                    grid[global_y][global_x] = 56; // Middle of vertical fence
+                }
+            }
+            // Horizontal part on bottom
+            for (let x = 1; x < horizontal_length; x++) {
+                let global_x = start_x + x;
+                let global_y = start_y + vertical_length - 1;
+                if (x === horizontal_length - 1) {
+                    grid[global_y][global_x] = 82; // End of horizontal fence
+                } else {
+                    grid[global_y][global_x] = 45; // Middle of horizontal fence
+                }
+            }
+        } else if (orientation === "bottom-right") {
+            // Vertical part on the right
+            for (let y = 0; y < vertical_length; y++) {
+                let global_x = start_x + horizontal_length - 1;
+                let global_y = start_y + y;
+                if (y === 0) {
+                    grid[global_y][global_x] = 47; // Start of vertical fence
+                } else if (y === vertical_length - 1) {
+                    grid[global_y][global_x] = 70; // Turning point to horizontal fence
+                } else {
+                    grid[global_y][global_x] = 58; // Middle of vertical fence
+                }
+            }
+            // Horizontal part on bottom
+            for (let x = 0; x < horizontal_length - 1; x++) {
+                let global_x = start_x + x;
+                let global_y = start_y + vertical_length - 1;
+                if (x === 0) {
+                    grid[global_y][global_x] = 80; // Start of horizontal fence
+                } else {
+                    grid[global_y][global_x] = 45; // Middle of horizontal fence
+                }
+            }
         }
+    
+        // Log the fence details
+        this.add_fact_from_type({
+            x: section_rect.x + start_x,
+            y: section_rect.y + start_y,
+            w: horizontal_length,
+            h: vertical_length
+        }, "A random L-shaped fence");
+    
+        return {
+            grid: grid,
+            path_points: [], // No doors for paths in random fences
+        };
+    }
+    
+    generate_single_fence(section_rect) {
+        let pad = 1;
+        let isHorizontal = Math.random() < 0.5;
+    
+        let length = Phaser.Math.Between(3, (isHorizontal ? section_rect.w : section_rect.h) - pad * 2);
+        let start_x = isHorizontal
+            ? Phaser.Math.Between(pad, section_rect.w - length - pad)
+            : Phaser.Math.Between(pad, section_rect.w - 1 - pad);
+        let start_y = isHorizontal
+            ? Phaser.Math.Between(pad, section_rect.h - 1 - pad)
+            : Phaser.Math.Between(pad, section_rect.h - length - pad);
+    
+        let grid = this.fill_with_tiles(section_rect.w, section_rect.h, -1);
+    
+        if (isHorizontal) {
+            for (let x = 0; x < length; x++) {
+                let global_x = start_x + x;
+                let global_y = start_y;
+                grid[global_y][global_x] = x === 0 ? 80 : x === length - 1 ? 82 : 45;
+            }
+        } else {
+            for (let y = 0; y < length; y++) {
+                let global_x = start_x;
+                let global_y = start_y + y;
+                grid[global_y][global_x] = y === 0 ? 47 : y === length - 1 ? 71 : 59;
+            }
+        }
+    
+        this.add_fact_from_type({
+            x: section_rect.x + start_x,
+            y: section_rect.y + start_y,
+            w: isHorizontal ? length : 1,
+            h: isHorizontal ? 1 : length
+        }, "A single line fence");
+    
+        return { grid: grid, path_points: [] };
     }
     
     //generates a grid from the tile set, with tile id labels
@@ -609,8 +764,6 @@ class TinyTown extends Phaser.Scene {
                                 path,
                                 distance: this.calculateManhattanDistance(path),
                             });
-                        } else {
-                            console.error(`No path found between ${startX},${startY} and ${endX}, ${endY}`)
                         }
                         resolve();
                     });
@@ -659,23 +812,16 @@ class TinyTown extends Phaser.Scene {
         if (this.DEBUG_PATH) console.log("[PATH DEBUG] Minimum Spanning Tree Edges: ", mstEdges);
 
         // 5. Draw the MST paths on the grid
-        let used_endpoints = [];
         mstEdges.forEach((edge) => {
-            if (used_endpoints.indexOf(edge.startPoint) === -1) {
-                used_endpoints.push(edge.startPoint);
-            }
-            if (used_endpoints.indexOf(edge.endPoint) === -1) {
-                used_endpoints.push(edge.endPoint);
-            }
             edge.path.forEach((tile) => {
 
                 //draw circles if debug
                 if (this.DEBUG_PATH){
                     this.add.circle(
-                        tile.x * TILE_HEIGHT + 8,
-                        tile.y * TILE_HEIGHT + 8,
-                        3,
-                        0xff0000
+                        tile.x * this.TILEHEIGHT + 8,
+                        tile.y * this.TILEHEIGHT + 8,
+                        2,
+                        0x00ff00
                     ).setDepth(10);
                 }
 
@@ -687,7 +833,8 @@ class TinyTown extends Phaser.Scene {
             });
         });
 
-        this.add_paths_fact(used_endpoints);
+        //TODO: Get array of points that actually end up along path
+        this.add_paths_fact(this.PATH_ENDPOINTS);
 
     }
 
