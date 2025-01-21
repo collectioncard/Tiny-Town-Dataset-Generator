@@ -54,6 +54,43 @@ class TinyTown extends Phaser.Scene {
         this.FactString += new_fact;
     }
 
+    generate_relationships(grid, objects) {
+        const relationships = [];
+        
+        // Helper function to calculate Manhattan distance
+        const calculate_distance = (objA, objB) => {
+            const centerA = { x: objA.rect.x + objA.rect.w / 2, y: objA.rect.y + objA.rect.h / 2 };
+            const centerB = { x: objB.rect.x + objB.rect.w / 2, y: objB.rect.y + objB.rect.h / 2 };
+            return Math.abs(centerA.x - centerB.x) + Math.abs(centerA.y - centerB.y);
+        };
+    
+        // Helper function to determine relative position
+        const relative_position = (objA, objB) => {
+            if (objB.rect.y + objB.rect.h <= objA.rect.y) return "above";
+            if (objB.rect.y >= objA.rect.y + objA.rect.h) return "below";
+            if (objB.rect.x + objB.rect.w <= objA.rect.x) return "to the left of";
+            if (objB.rect.x >= objA.rect.x + objA.rect.w) return "to the right of";
+            return "overlapping with";
+        };
+    
+        // Iterate through all pairs of objects to determine relationships
+        for (let i = 0; i < objects.length; i++) {
+            for (let j = i + 1; j < objects.length; j++) {
+                const objA = objects[i];
+                const objB = objects[j];
+    
+                // Calculate distance and relative position
+                const distance = calculate_distance(objA, objB);
+                const position = relative_position(objA, objB);
+    
+                // Add the relationship to the array
+                relationships.push(`${objA.name} is ${position} ${objB.name} with a distance of ${distance}.`);
+            }
+        }
+    
+        return relationships;
+    }
+
     preload() {
         this.load.setPath("./assets/");
         this.load.image("tiny_town_tiles", "kenny-tiny-town-tilemap-packed.png");
@@ -181,28 +218,135 @@ class TinyTown extends Phaser.Scene {
         this.runOnce = false;
     }
 
-    async sendMapToBackend(map_description) {
-        const canvas = game.context.canvas;
-        const imageData = canvas.toDataURL('image/png');
-    
-        const response = await fetch('http://localhost:3000/mapGenerated', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
-                image: imageData, 
-                description: map_description,
-                batchId: global.currentBatchStartTime 
-            }),
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+    async create() {
+        // If you need to lookup a tile, just swap this to true
+        // Replaces map generation with a display of the full tile set and each tile's id
+        // Debug get tile x, y from click
+        if (this.VIEW_LOOKUP) {
+            let w = 192;
+            let h = 176;
+            let size = 16;
+            let scale = SCALE;
+            let grid = this.generate_lookup_grid(w / size, h / size);
+            const map = this.make.tilemap({
+                data: grid,
+                tileWidth: 16,
+                tileHeight: 16,
+            });
+            const tilesheet = map.addTilesetImage("tiny_town_tiles");
+            var layer = map.createLayer(0, tilesheet, 0, 0);
+            layer.setScale(scale);
+            for (let y = 0; y < h * scale; y += size * scale) {
+                for (let x = 0; x < w * scale; x += size * scale) {
+                    let name = (x / size / scale + (y / size / scale) * (w / size)).toString();
+                    this.add.text(x, y, name, {
+                        fontSize: 8,
+                        backgroundColor: "000000",
+                    });
+                }
+            }
+            return;
         }
-
-        return response;
+    
+        this.PATH_ENDPOINTS = [];
+        this.FactString = "";
+    
+        // 3x3 sections, each 5x5
+        let ground_grid = this.generate_background(MAP_WIDTH, MAP_HEIGHT);
+        let props_grid = this.fill_with_tiles(MAP_WIDTH, MAP_HEIGHT, 1);
+        this.input.on("pointerdown", () => {
+            console.log(
+                `${Math.floor(game.input.mousePointer.x / 16)}, ${Math.floor(game.input.mousePointer.y / 16)}`
+            );
+            console.log(
+                props_grid[Math.floor(game.input.mousePointer.y / 16)][
+                    Math.floor(game.input.mousePointer.x / 16)
+                ]
+            );
+        });
+    
+        let stack = [{ x: 0, y: 0, w: MAP_WIDTH, h: MAP_HEIGHT }];
+    
+        while (stack.length > 0) {
+            let { x, y, w, h } = stack.pop();
+    
+            if (w > this.SECTION_MAX_WIDTH || h > this.SECTION_MAX_HEIGHT) {
+                let splitVertical = Phaser.Math.Between(0, 1) === 0; // Randomly choose split direction
+    
+                if (splitVertical) {
+                    if (w <= this.SECTION_MIN_WIDTH * 2) {
+                        splitVertical = false; // Force horizontal split if width is too small
+                    }
+                } else {
+                    if (h <= this.SECTION_MIN_HEIGHT * 2) {
+                        splitVertical = true; // Force vertical split if height is too small
+                    }
+                }
+    
+                if (splitVertical) {
+                    // Vertical split
+                    let split = Phaser.Math.Between(
+                        this.SECTION_MIN_WIDTH,
+                        Math.min(w - this.SECTION_MIN_WIDTH, this.SECTION_MAX_WIDTH)
+                    );
+                    stack.push({ x: x, y: y, w: split, h: h });
+                    stack.push({ x: x + split, y: y, w: w - split, h: h });
+                } else {
+                    // Horizontal split
+                    let split = Phaser.Math.Between(
+                        this.SECTION_MIN_HEIGHT,
+                        Math.min(h - this.SECTION_MIN_HEIGHT, this.SECTION_MAX_HEIGHT)
+                    );
+                    stack.push({ x: x, y: y, w: w, h: split });
+                    stack.push({ x: x, y: y + split, w: w, h: h - split });
+                }
+            } else {
+                let rect = { x: x, y: y, w: w, h: h };
+                console.log(rect);
+                this.draw_debug_rect(rect);
+                props_grid = this.generate_section(props_grid, rect);
+            }
+        }
+    
+        // Now that generation is complete we can build roads between sections
+        if (this.DEBUG_PATH) console.log("[PATH DEBUG] Path Endpoints: ", this.PATH_ENDPOINTS);
+    
+        await this.generate_path(props_grid);
+        if (this.DEBUG_PATH) console.log("[PATH DEBUG] Path generation complete");
+    
+        console.log(this.FactString);
+    
+        let grids = [ground_grid, props_grid];
+        grids.forEach((grid) => {
+            const map = this.make.tilemap({
+                data: grid,
+                tileWidth: 16,
+                tileHeight: 16,
+            });
+            const tilesheet = map.addTilesetImage("tiny_town_tiles");
+            let layer = map.createLayer(0, tilesheet, 0, 0);
+            layer.setScale(SCALE);
+        });
+    
+        if (this.DEBUG_COORDS) {
+            for (let y = 0; y < MAP_HEIGHT; y += 5) {
+                for (let x = 0; x < MAP_WIDTH; x += 5) {
+                    let name = x.toString() + " " + y.toString();
+                    this.add.text(x * TILE_WIDTH, y * TILE_HEIGHT, name, {
+                        fontSize: 8,
+                        backgroundColor: "000000",
+                    });
+                }
+            }
+        }
+    
+        // Generate relationships after all objects have been created
+        const relationships = this.generate_relationships(props_grid, this.GENERATED_SECTIONS);
+        console.log("Relationships:", relationships);
+    
+        this.runOnce = true;
     }
+    
     
     // generates a section of the map
     // assume grid is filled
@@ -348,6 +492,19 @@ class TinyTown extends Phaser.Scene {
         }
         var description = "A forest"
         this.add_fact_from_type(rect, description);
+
+        // Add the object to the GENERATED_SECTIONS array
+        const forestObject = {
+            name: "Forest",
+            rect: {
+                x: rect.x,
+                y: rect.y,
+                w: rect.w,
+                h: rect.h,
+            },
+        };
+        this.GENERATED_SECTIONS.push(forestObject);
+
         return {
             grid : grid,
             path_points : [],
@@ -439,6 +596,17 @@ class TinyTown extends Phaser.Scene {
             w: house_rect.w,
             h: house_rect.h}, description);
 
+        // Add the object to the GENERATED_SECTIONS array
+        const houseObject = {
+            name: "House",
+            rect: {
+                x: section_rect.x + house_rect.x,
+                y: section_rect.y + house_rect.y,
+                w: house_rect.w,
+                h: house_rect.h,
+            },
+        };
+        this.GENERATED_SECTIONS.push(houseObject);
 
         let door_global_position = {
             x : section_rect.x + house_rect.x + door_x,
@@ -525,6 +693,18 @@ class TinyTown extends Phaser.Scene {
         } else {
             return this.generate_single_fence(section_rect);
         }
+        // Add the object to the GENERATED_SECTIONS array
+        const fenceObject = {
+            name: "Fence",
+            rect: {
+                x: section_rect.x,
+                y: section_rect.y,
+                w: section_rect.w,
+                h: section_rect.h,
+            },
+        };
+        this.GENERATED_SECTIONS.push(fenceObject);
+        
     }
 
     generate_regular_fence(section_rect) {
@@ -597,7 +777,19 @@ class TinyTown extends Phaser.Scene {
             w: fence_rect.w,
             h: fence_rect.h
         }, description);
-    
+
+        // Add the object to the GENERATED_SECTIONS array
+        const regularFenceObject = {
+            name: "Regular Fence",
+            rect: {
+                x: section_rect.x,
+                y: section_rect.y,
+                w: section_rect.w,
+                h: section_rect.h,
+            },
+        };
+        this.GENERATED_SECTIONS.push(regularFenceObject);
+            
         let door_global_position = {
             x: section_rect.x + fence_rect.x + door_x,
             y: section_rect.y + fence_rect.y + (door_edge === "bottom" ? fence_h - 1 : 0),
@@ -737,6 +929,18 @@ class TinyTown extends Phaser.Scene {
             w: horizontal_length,
             h: vertical_length
         }, description);
+
+        // Add the object to the GENERATED_SECTIONS array
+        const randomFenceObject = {
+            name: "Random Fence",
+            rect: {
+                x: section_rect.x,
+                y: section_rect.y,
+                w: section_rect.w,
+                h: section_rect.h,
+            },
+        };
+        this.GENERATED_SECTIONS.push(randomFenceObject);
     
         return {
             grid: grid,
@@ -782,6 +986,18 @@ class TinyTown extends Phaser.Scene {
             w: isHorizontal ? length : 1,
             h: isHorizontal ? 1 : length
         }, description);
+
+        // Add the object to the GENERATED_SECTIONS array
+        const singleFenceObject = {
+            name: "Single Fence",
+            rect: {
+                x: section_rect.x,
+                y: section_rect.y,
+                w: section_rect.w,
+                h: section_rect.h,
+            },
+        };
+        this.GENERATED_SECTIONS.push(singleFenceObject);
     
         return {
             grid: grid,
