@@ -78,21 +78,21 @@ class TinyTown extends Phaser.Scene {
     
                 let position;
                 if (Math.abs(dy) < 0.1 && dx > 0) {
-                    position = "to the right of";
-                } else if (Math.abs(dy) < 0.1 && dx < 0) {
                     position = "to the left of";
+                } else if (Math.abs(dy) < 0.1 && dx < 0) {
+                    position = "to the right of";
                 } else if (Math.abs(dx) < 0.1 && dy > 0) {
-                    position = "below";
-                } else if (Math.abs(dx) < 0.1 && dy < 0) {
                     position = "above";
+                } else if (Math.abs(dx) < 0.1 && dy < 0) {
+                    position = "below";
                 } else if (dx > 0 && dy > 0) {
-                    position = "diagonally below and to the right of";
-                } else if (dx < 0 && dy > 0) {
-                    position = "diagonally below and to the left of";
-                } else if (dx > 0 && dy < 0) {
-                    position = "diagonally above and to the right of";
-                } else if (dx < 0 && dy < 0) {
                     position = "diagonally above and to the left of";
+                } else if (dx < 0 && dy > 0) {
+                    position = "diagonally above and to the right of";
+                } else if (dx > 0 && dy < 0) {
+                    position = "diagonally below and to the left of";
+                } else if (dx < 0 && dy < 0) {
+                    position = "diagonally below and to the right of";
                 } else {
                     position = "overlapping with";
                 }
