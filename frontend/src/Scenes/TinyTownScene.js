@@ -54,43 +54,66 @@ class TinyTown extends Phaser.Scene {
         this.FactString += new_fact;
     }
 
-    generate_relationships(grid, objects) {
+    generate_relationships(objects) {
         const relationships = [];
-        
-        // Helper function to calculate Manhattan distance
-        const calculate_distance = (objA, objB) => {
-            const centerA = { x: objA.rect.x + objA.rect.w / 2, y: objA.rect.y + objA.rect.h / 2 };
-            const centerB = { x: objB.rect.x + objB.rect.w / 2, y: objB.rect.y + objB.rect.h / 2 };
-            return Math.abs(centerA.x - centerB.x) + Math.abs(centerA.y - centerB.y);
-        };
     
-        // Helper function to determine relative position
-        const relative_position = (objA, objB) => {
-            if (objB.rect.y + objB.rect.h <= objA.rect.y) return "above";
-            if (objB.rect.y >= objA.rect.y + objA.rect.h) return "below";
-            if (objB.rect.x + objB.rect.w <= objA.rect.x) return "to the left of";
-            if (objB.rect.x >= objA.rect.x + objA.rect.w) return "to the right of";
-            return "overlapping with";
-        };
-    
-        // Iterate through all pairs of objects to determine relationships
-        for (let i = 0; i < objects.length; i++) {
-            for (let j = i + 1; j < objects.length; j++) {
-                const objA = objects[i];
-                const objB = objects[j];
-    
-                // Calculate distance and relative position
-                const distance = calculate_distance(objA, objB);
-                const position = relative_position(objA, objB);
-    
-                // Add the relationship to the array
-                relationships.push(`${objA.name} is ${position} ${objB.name} with a distance of ${distance}.`);
+        // Extract centers and compute relationships
+        objects.forEach((objA, indexA) => {
+            if (!objA.center || objA.center.x === undefined || objA.center.y === undefined) {
+                console.error(`Object ${indexA} (${objA.name}) is missing a valid center property.`);
+                return;
             }
-        }
+    
+            objects.forEach((objB, indexB) => {
+                if (indexA === indexB) return; // Skip comparing the same object
+    
+                if (!objB.center || objB.center.x === undefined || objB.center.y === undefined) {
+                    console.error(`Object ${indexB} (${objB.name}) is missing a valid center property.`);
+                    return;
+                }
+    
+                // Calculate positional relationship
+                const dx = objB.center.x - objA.center.x;
+                const dy = objB.center.y - objA.center.y;
+    
+                let position;
+                if (Math.abs(dy) < 0.1 && dx > 0) {
+                    position = "to the right of";
+                } else if (Math.abs(dy) < 0.1 && dx < 0) {
+                    position = "to the left of";
+                } else if (Math.abs(dx) < 0.1 && dy > 0) {
+                    position = "below";
+                } else if (Math.abs(dx) < 0.1 && dy < 0) {
+                    position = "above";
+                } else if (dx > 0 && dy > 0) {
+                    position = "diagonally below and to the right of";
+                } else if (dx < 0 && dy > 0) {
+                    position = "diagonally below and to the left of";
+                } else if (dx > 0 && dy < 0) {
+                    position = "diagonally above and to the right of";
+                } else if (dx < 0 && dy < 0) {
+                    position = "diagonally above and to the left of";
+                } else {
+                    position = "overlapping with";
+                }
+    
+                // Add relationship description
+                const description = `${objA.name} is ${position} ${objB.name}.`;
+                relationships.push(description);
+    
+                // Debug: Log the relationship details
+                console.log(
+                    `Object ${indexA} (${objA.name}) and Object ${indexB} (${objB.name}): ${description}`
+                );
+            });
+        });
+    
+        // Debug: Log all relationships
+        console.log("Generated Relationships:", relationships);
     
         return relationships;
     }
-
+    
     preload() {
         this.load.setPath("./assets/");
         this.load.image("tiny_town_tiles", "kenny-tiny-town-tilemap-packed.png");
@@ -341,8 +364,13 @@ class TinyTown extends Phaser.Scene {
         }
     
         // Generate relationships after all objects have been created
-        const relationships = this.generate_relationships(props_grid, this.GENERATED_SECTIONS);
-        console.log("Relationships:", relationships);
+        // Generate relationships after all objects have been created
+        console.log("Before Generated Sections:");
+        console.table(this.GENERATED_SECTIONS);
+
+        const relationships = this.generate_relationships(this.GENERATED_SECTIONS);
+        console.log("Extracted Relationships:", relationships);
+
     
         this.runOnce = true;
     }
@@ -490,10 +518,10 @@ class TinyTown extends Phaser.Scene {
                 }
             }
         }
-        var description = "A forest"
+        var description = "A forest";
         this.add_fact_from_type(rect, description);
-
-        // Add the object to the GENERATED_SECTIONS array
+        
+        // Manually define the center of the forest rectangle
         const forestObject = {
             name: "Forest",
             rect: {
@@ -502,9 +530,22 @@ class TinyTown extends Phaser.Scene {
                 w: rect.w,
                 h: rect.h,
             },
+            center: {
+                x: rect.x + rect.w / 2,
+                y: rect.y + rect.h / 2,
+            }, // Add the center with x and y
         };
+        
+        // Draw a red dot at the center
+        this.add.circle(
+            forestObject.center.x * TILE_WIDTH * SCALE,
+            forestObject.center.y * TILE_HEIGHT * SCALE,
+            2, // radius of the dot
+            0xFF0000 // red color
+        ).setDepth(10);
+        
         this.GENERATED_SECTIONS.push(forestObject);
-
+        
         return {
             grid : grid,
             path_points : [],
@@ -605,8 +646,22 @@ class TinyTown extends Phaser.Scene {
                 w: house_rect.w,
                 h: house_rect.h,
             },
+            center: {
+                x: section_rect.x + house_rect.x + house_rect.w / 2,
+                y: section_rect.y + house_rect.y + house_rect.h / 2,
+            },
         };
+
+        // Draw a red dot at the center
+        this.add.circle(
+            houseObject.center.x * TILE_WIDTH * SCALE,
+            houseObject.center.y * TILE_HEIGHT * SCALE,
+            2, // radius of the dot
+            0xFF0000 // red color
+        ).setDepth(10);
+
         this.GENERATED_SECTIONS.push(houseObject);
+
 
         let door_global_position = {
             x : section_rect.x + house_rect.x + door_x,
@@ -782,13 +837,27 @@ class TinyTown extends Phaser.Scene {
         const regularFenceObject = {
             name: "Regular Fence",
             rect: {
-                x: section_rect.x,
-                y: section_rect.y,
-                w: section_rect.w,
-                h: section_rect.h,
+                x: section_rect.x + fence_rect.x,
+                y: section_rect.y + fence_rect.y,
+                w: fence_rect.w,
+                h: fence_rect.h
+            },
+            center: {
+                x: section_rect.x + fence_rect.x + fence_rect.w / 2,
+                y: section_rect.y + fence_rect.y + fence_rect.h / 2,
             },
         };
+
+        // Draw a red dot at the center
+        this.add.circle(
+            regularFenceObject.center.x * TILE_WIDTH * SCALE,
+            regularFenceObject.center.y * TILE_HEIGHT * SCALE,
+            2, // radius of the dot
+            0xFF0000 // red color
+        ).setDepth(10);
+
         this.GENERATED_SECTIONS.push(regularFenceObject);
+
             
         let door_global_position = {
             x: section_rect.x + fence_rect.x + door_x,
@@ -921,7 +990,7 @@ class TinyTown extends Phaser.Scene {
             }
         }
     
-        let description = "A random L-shaped fence"
+        let description = "A random L-shaped fence";
         // Log the fence details
         this.add_fact_from_type({
             x: section_rect.x + start_x,
@@ -929,18 +998,31 @@ class TinyTown extends Phaser.Scene {
             w: horizontal_length,
             h: vertical_length
         }, description);
-
+        
         // Add the object to the GENERATED_SECTIONS array
         const randomFenceObject = {
             name: "Random Fence",
             rect: {
-                x: section_rect.x,
-                y: section_rect.y,
-                w: section_rect.w,
-                h: section_rect.h,
+                x: section_rect.x + start_x,
+                y: section_rect.y + start_y,
+                w: horizontal_length,
+                h: vertical_length,
+            },
+            center: {
+                x: section_rect.x + start_x + horizontal_length / 2,
+                y: section_rect.y + start_y + vertical_length / 2,
             },
         };
-        this.GENERATED_SECTIONS.push(randomFenceObject);
+        
+        // Draw a red dot at the center
+        this.add.circle(
+            randomFenceObject.center.x * TILE_WIDTH * SCALE,
+            randomFenceObject.center.y * TILE_HEIGHT * SCALE,
+            2, // radius of the dot
+            0xFF0000 // red color
+        ).setDepth(10);
+        
+        this.GENERATED_SECTIONS.push(randomFenceObject);        
     
         return {
             grid: grid,
@@ -979,26 +1061,43 @@ class TinyTown extends Phaser.Scene {
             }
         }
     
-        let description = "A single line fence"
+        let description = "A single line fence";
         this.add_fact_from_type({
             x: section_rect.x + start_x,
             y: section_rect.y + start_y,
             w: isHorizontal ? length : 1,
             h: isHorizontal ? 1 : length
         }, description);
-
-        // Add the object to the GENERATED_SECTIONS array
+        
+        // Calculate midpoint based on orientation
         const singleFenceObject = {
             name: "Single Fence",
             rect: {
-                x: section_rect.x,
-                y: section_rect.y,
-                w: section_rect.w,
-                h: section_rect.h,
+                x: section_rect.x + start_x,
+                y: section_rect.y + start_y,
+                w: isHorizontal ? length : 1,
+                h: isHorizontal ? 1 : length,
             },
+            center: {
+                x: isHorizontal
+                    ? section_rect.x + start_x + length / 2
+                    : section_rect.x + start_x,
+                y: isHorizontal
+                    ? section_rect.y + start_y
+                    : section_rect.y + start_y + length / 2,
+            }, // Add the center with x and y
         };
+        
+        // Draw a red dot at the midpoint
+        this.add.circle(
+            singleFenceObject.center.x * TILE_WIDTH * SCALE,
+            singleFenceObject.center.y * TILE_HEIGHT * SCALE,
+            2, // radius of the dot
+            0xFF0000 // red color
+        ).setDepth(10);
+        
         this.GENERATED_SECTIONS.push(singleFenceObject);
-    
+        
         return {
             grid: grid,
             path_points: [],
