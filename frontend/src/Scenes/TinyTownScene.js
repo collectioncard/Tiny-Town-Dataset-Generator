@@ -1,6 +1,6 @@
 class TinyTown extends Phaser.Scene {
     VIEW_LOOKUP = false;
-    DEBUG_DRAW = true;
+    DEBUG_DRAW = false;
     DEBUG_PATH = false;
     DEBUG_COORDS = false;
     runOnce;
@@ -475,12 +475,16 @@ class TinyTown extends Phaser.Scene {
         };
         
         // Draw a red dot at the center
-        this.add.circle(
-            forestObject.center.x * TILE_WIDTH * SCALE,
-            forestObject.center.y * TILE_HEIGHT * SCALE,
-            2, // radius of the dot
-            0xFF0000 // red color
-        ).setDepth(10);
+        if (this.DEBUG_DRAW) {
+            this.add.circle(
+                forestObject.center.x * TILE_WIDTH * SCALE,
+                forestObject.center.y * TILE_HEIGHT * SCALE,
+                2, // radius of the dot
+                0xFF0000 // red color
+            ).setDepth(10);
+        }
+            
+        
         
         this.GENERATED_SECTIONS.push(forestObject);
         
@@ -591,12 +595,15 @@ class TinyTown extends Phaser.Scene {
         };
 
         // Draw a red dot at the center
-        this.add.circle(
-            houseObject.center.x * TILE_WIDTH * SCALE,
-            houseObject.center.y * TILE_HEIGHT * SCALE,
-            2, // radius of the dot
-            0xFF0000 // red color
-        ).setDepth(10);
+        if (this.DEBUG_DRAW) {
+            this.add.circle(
+                houseObject.center.x * TILE_WIDTH * SCALE,
+                houseObject.center.y * TILE_HEIGHT * SCALE,
+                2, // radius of the dot
+                0xFF0000 // red color
+            ).setDepth(10);
+        }
+        
 
         this.GENERATED_SECTIONS.push(houseObject);
 
@@ -787,12 +794,14 @@ class TinyTown extends Phaser.Scene {
         };
 
         // Draw a red dot at the center
-        this.add.circle(
-            regularFenceObject.center.x * TILE_WIDTH * SCALE,
-            regularFenceObject.center.y * TILE_HEIGHT * SCALE,
-            2, // radius of the dot
-            0xFF0000 // red color
-        ).setDepth(10);
+        if (this.DEBUG_DRAW) {
+            this.add.circle(
+                regularFenceObject.center.x * TILE_WIDTH * SCALE,
+                regularFenceObject.center.y * TILE_HEIGHT * SCALE,
+                2, // radius of the dot
+                0xFF0000 // red color
+            ).setDepth(10);
+        }
 
         this.GENERATED_SECTIONS.push(regularFenceObject);
 
@@ -953,12 +962,14 @@ class TinyTown extends Phaser.Scene {
         };
         
         // Draw a red dot at the center
-        this.add.circle(
-            randomFenceObject.center.x * TILE_WIDTH * SCALE,
-            randomFenceObject.center.y * TILE_HEIGHT * SCALE,
-            2, // radius of the dot
-            0xFF0000 // red color
-        ).setDepth(10);
+        if (this.DEBUG_DRAW) {
+            this.add.circle(
+                randomFenceObject.center.x * TILE_WIDTH * SCALE,
+                randomFenceObject.center.y * TILE_HEIGHT * SCALE,
+                2, // radius of the dot
+                0xFF0000 // red color
+            ).setDepth(10);
+        }
         
         this.GENERATED_SECTIONS.push(randomFenceObject);        
     
@@ -1027,12 +1038,14 @@ class TinyTown extends Phaser.Scene {
         };
         
         // Draw a red dot at the midpoint
-        this.add.circle(
-            singleFenceObject.center.x * TILE_WIDTH * SCALE,
-            singleFenceObject.center.y * TILE_HEIGHT * SCALE,
-            2, // radius of the dot
-            0xFF0000 // red color
-        ).setDepth(10);
+        if (this.DEBUG_DRAW) {
+            this.add.circle(
+                singleFenceObject.center.x * TILE_WIDTH * SCALE,
+                singleFenceObject.center.y * TILE_HEIGHT * SCALE,
+                2, // radius of the dot
+                0xFF0000 // red color
+            ).setDepth(10);
+        }
         
         this.GENERATED_SECTIONS.push(singleFenceObject);
         
