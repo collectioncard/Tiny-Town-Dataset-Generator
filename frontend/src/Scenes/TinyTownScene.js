@@ -24,10 +24,13 @@ class TinyTown extends Phaser.Scene {
     GENERATED_SECTIONS = []
 
     FactString = "";
+    relationshipsText = "Relationships:\n";
+
 
     constructor() {
         super("tinyTown");
 
+        this.relationshipsText = "Relationships:\n";
         this.FactString = "";
     }
     /*TODO: Variations of output syntax? Like (x, y), x = # y = #, at # and #. Coordinate then object?
@@ -56,6 +59,7 @@ class TinyTown extends Phaser.Scene {
 
     generate_relationships(objects) {
         const relationships = [];
+        const groupedRelationships = {};
     
         // Extract centers and compute relationships
         objects.forEach((objA, indexA) => {
@@ -63,6 +67,9 @@ class TinyTown extends Phaser.Scene {
                 console.error(`Object ${indexA} (${objA.name}) is missing a valid center property.`);
                 return;
             }
+            
+            // Initialize the group for objA
+            groupedRelationships[`${objA.name} at (${objA.center.x}, ${objA.center.y})`] = [];
     
             objects.forEach((objB, indexB) => {
                 if (indexA === indexB) return; // Skip comparing the same object
@@ -96,21 +103,42 @@ class TinyTown extends Phaser.Scene {
                 } else {
                     position = "overlapping with";
                 }
+
+                const distance = Math.abs(dx) + Math.abs(dy); 
     
                 // Add relationship description
                 const description = `${objA.name} is ${position} ${objB.name}.`;
                 relationships.push(description);
+
+                // Add relationship to the group for objA
+                groupedRelationships[`${objA.name} at (${objA.center.x}, ${objA.center.y})`].push(
+                    `- is ${position} ${objB.name} at (${objB.center.x}, ${objB.center.y}) (distance: ${distance} tiles).`
+                );
     
                 // Debug: Log the relationship details
                 console.log(
                     `Object ${indexA} (${objA.name}) and Object ${indexB} (${objB.name}): ${description}`
                 );
+                
+                // Update the text
+                this.relationshipsText = "Relationships:\n";
+                for (const [object, relations] of Object.entries(groupedRelationships)) {
+                    this.relationshipsText += `\nRelationships for ${object}:\n`;
+                    this.relationshipsText += relations.join("\n") + "\n";
+                }
+
+                // For non-grouped relationship text
+                // const description = `${objA.name} at (${objA.center.x}, ${objA.center.y}) is ${position} ${objB.name} at (${objB.center.x}, ${objB.center.y}) (distance: ${distance} tiles).`;
+                // relationships.push(description);
             });
         });
     
         // Debug: Log all relationships
         console.log("Generated Relationships:", relationships);
-    
+
+        // For non-grouped relationship text
+        //this.relationshipsText += relationships.join("\n");
+        
         return relationships;
     }
     
@@ -160,6 +188,7 @@ class TinyTown extends Phaser.Scene {
         this.GENERATED_SECTIONS = [];
         this.PATH_ENDPOINTS = [];
         this.FactString = "";
+        this.relationshipsText = "Relationships:\n";
     
         // 3x3 sections, each 5x5
         let ground_grid = this.generate_background(MAP_WIDTH, MAP_HEIGHT);
@@ -224,7 +253,6 @@ class TinyTown extends Phaser.Scene {
         await this.generate_path(props_grid);
         if (this.DEBUG_PATH) console.log("[PATH DEBUG] Path generation complete");
     
-        console.log(this.FactString);
     
         let grids = [ground_grid, props_grid];
         grids.forEach((grid) => {
@@ -256,7 +284,8 @@ class TinyTown extends Phaser.Scene {
 
         const relationships = this.generate_relationships(this.GENERATED_SECTIONS);
         console.log("Extracted Relationships:", relationships);
-
+        this.FactString += `\n${this.relationshipsText}`;
+        console.log(this.FactString);
     
         this.runOnce = true;
     }
