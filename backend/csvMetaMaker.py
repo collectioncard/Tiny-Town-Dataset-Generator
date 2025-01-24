@@ -21,7 +21,7 @@ def txt_to_csv(folder_path, csv_path, origin_folder):
         file_path = os.path.join(folder_path, filename)
         with open(file_path, 'r', encoding='utf-8') as txtfile:
           content = txtfile.read()
-          content = content.replace('\n', '\\n')  
+          content = content.replace('\n', ' ')  
           writer.writerow([full_path, content])
       elif os.path.isdir(filename):
           txt_to_csv(os.path.join(folder_path, filename), csv_path, full_path)

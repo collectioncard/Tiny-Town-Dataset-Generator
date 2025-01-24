@@ -87,12 +87,12 @@ if __name__ == "__main__":
   # source_folder ="./mapOutput/1737682480303"
   source_folder ="./mapOutput/1737686210274"
   dest_folder = "./mapOutput/dataset"
-  sub_name = "/images"
-  split_images(source_folder, dest_folder, sub_name, 8)
+  sub_name = "images"
+  split_images(source_folder, dest_folder, "/"+sub_name, 8)
   print("Images copied and split")
-  txt_to_csv(dest_folder+"/test"+sub_name, dest_folder+"/test"+"/metadata.csv", sub_name)
+  txt_to_csv(dest_folder+"/test/"+sub_name, dest_folder+"/test"+"/metadata.csv", sub_name)
   print("Test metadata complete")
-  txt_to_csv(dest_folder+"/train"+sub_name, dest_folder+"/train"+"/metadata.csv", sub_name)
+  txt_to_csv(dest_folder+"/train/"+sub_name, dest_folder+"/train"+"/metadata.csv", sub_name)
   print("Train metadata complete")
   #txt_to_csv(dest_folder, dest_folder+"/metadata.csv",dest_folder)
   #delete_all_txt_files(dest_folder)
