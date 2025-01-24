@@ -4,7 +4,11 @@
 # to publish in
 # https://huggingface.co/datasets/SentientDragon5/TinyTown20x20
 
+# pip install alive_progress
+
+
 from csvMetaMaker import txt_to_csv
+from csvMetaMaker import count_files_folders
 
 import os
 import shutil
@@ -19,7 +23,8 @@ def split_images(source_folder, data_folder="data", sub_name="/images", train_to
     source_folder: The path to the folder containing the images.
     data_folder: The name of the folder to create for train and test sets. Defaults to 'data'.
   """
-  with alive_bar(1000) as bar:
+  count = count_files_folders(source_folder)//2+2
+  with alive_bar(count) as bar:
     # Create the data folder (overwrites if it exists)
     if os.path.exists(data_folder):
         shutil.rmtree(data_folder)  # Remove existing data folder

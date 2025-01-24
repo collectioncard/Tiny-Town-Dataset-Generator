@@ -2,6 +2,8 @@ import os
 import csv
 from alive_progress import alive_bar
 
+# pip install alive_progress
+
 def count_files_folders(folder_path):
   """
   Counts the number of files in a folder recursively.
