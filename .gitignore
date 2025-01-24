@@ -145,3 +145,4 @@ temp
 TODOs.md
 
 backend/mapOutput/
+*.pyc
