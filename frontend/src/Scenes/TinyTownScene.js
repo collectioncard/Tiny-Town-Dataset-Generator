@@ -1,6 +1,6 @@
 class TinyTown extends Phaser.Scene {
     VIEW_LOOKUP = false;
-    DEBUG_DRAW = true;
+    DEBUG_DRAW = false;
     DEBUG_PATH = false;
     DEBUG_COORDS = false;
     runOnce;
@@ -24,10 +24,13 @@ class TinyTown extends Phaser.Scene {
     GENERATED_SECTIONS = []
 
     FactString = "";
+    relationshipsText = "Relationships:\n";
+
 
     constructor() {
         super("tinyTown");
 
+        this.relationshipsText = "Relationships:\n";
         this.FactString = "";
     }
     /*TODO: Variations of output syntax? Like (x, y), x = # y = #, at # and #. Coordinate then object?
@@ -54,124 +57,94 @@ class TinyTown extends Phaser.Scene {
         this.FactString += new_fact;
     }
 
+    generate_relationships(objects) {
+        const relationships = [];
+        const groupedRelationships = {};
+    
+        // Extract centers and compute relationships
+        objects.forEach((objA, indexA) => {
+            if (!objA.center || objA.center.x === undefined || objA.center.y === undefined) {
+                console.error(`Object ${indexA} (${objA.name}) is missing a valid center property.`);
+                return;
+            }
+            
+            // Initialize the group for objA
+            groupedRelationships[`${objA.name} at (${objA.center.x}, ${objA.center.y})`] = [];
+    
+            objects.forEach((objB, indexB) => {
+                if (indexA === indexB) return; // Skip comparing the same object
+    
+                if (!objB.center || objB.center.x === undefined || objB.center.y === undefined) {
+                    console.error(`Object ${indexB} (${objB.name}) is missing a valid center property.`);
+                    return;
+                }
+    
+                // Calculate positional relationship
+                const dx = objB.center.x - objA.center.x;
+                const dy = objB.center.y - objA.center.y;
+    
+                let position;
+                if (Math.abs(dy) < 1 && dx > 0) {
+                    position = "to the left of";
+                } else if (Math.abs(dy) < 1 && dx < 0) {
+                    position = "to the right of";
+                } else if (Math.abs(dx) < 1 && dy > 0) {
+                    position = "above";
+                } else if (Math.abs(dx) < 1 && dy < 0) {
+                    position = "below";
+                } else if (dx > 0 && dy > 0) {
+                    position = "diagonally above and to the left of";
+                } else if (dx < 0 && dy > 0) {
+                    position = "diagonally above and to the right of";
+                } else if (dx > 0 && dy < 0) {
+                    position = "diagonally below and to the left of";
+                } else if (dx < 0 && dy < 0) {
+                    position = "diagonally below and to the right of";
+                } else {
+                    position = "overlapping with";
+                }
+
+                const distance = Math.abs(dx) + Math.abs(dy); 
+    
+                // Add relationship description
+                const description = `${objA.name} is ${position} ${objB.name}.`;
+                relationships.push(description);
+
+                // Add relationship to the group for objA
+                groupedRelationships[`${objA.name} at (${objA.center.x}, ${objA.center.y})`].push(
+                    `- is ${position} ${objB.name} at (${objB.center.x}, ${objB.center.y}) (distance: ${distance} tiles).`
+                );
+    
+                // Debug: Log the relationship details
+                console.log(
+                    `Object ${indexA} (${objA.name}) and Object ${indexB} (${objB.name}): ${description}`
+                );
+                
+                // Update the text
+                this.relationshipsText = "Relationships:\n";
+                for (const [object, relations] of Object.entries(groupedRelationships)) {
+                    this.relationshipsText += `\nRelationships for ${object}:\n`;
+                    this.relationshipsText += relations.join("\n") + "\n";
+                }
+
+                // For non-grouped relationship text
+                // const description = `${objA.name} at (${objA.center.x}, ${objA.center.y}) is ${position} ${objB.name} at (${objB.center.x}, ${objB.center.y}) (distance: ${distance} tiles).`;
+                // relationships.push(description);
+            });
+        });
+    
+        // Debug: Log all relationships
+        console.log("Generated Relationships:", relationships);
+
+        // For non-grouped relationship text
+        //this.relationshipsText += relationships.join("\n");
+        
+        return relationships;
+    }
+    
     preload() {
         this.load.setPath("./assets/");
         this.load.image("tiny_town_tiles", "kenny-tiny-town-tilemap-packed.png");
-    }
-
-    async create() {
-        // If you need to lookup a tile, just swap this to true
-        //Replaces map generation with a display of the full tile set and each tile's id
-        //Debug get tile x, y from click
-        if (this.VIEW_LOOKUP)   {
-            let w = 192
-            let h = 176
-            let size = 16
-            let scale = SCALE
-            let grid = this.generate_lookup_grid(w/size,h/size)
-            const map = this.make.tilemap({
-                data: grid,
-                tileWidth: 16,
-                tileHeight: 16
-            })
-            const tilesheet = map.addTilesetImage("tiny_town_tiles")
-            var layer = map.createLayer(0, tilesheet, 0, 0)
-            layer.setScale(scale);
-            for (let y = 0; y < h*scale; y+=size*scale) {
-                for (let x = 0; x < w*scale; x+=size*scale) {
-                    let name = (x/size/scale+y/size/scale*w/size).toString()
-                    this.add.text(x,y, name, {
-                        "fontSize" : 8,
-                        "backgroundColor" : "000000"
-                    })
-                }
-            }
-            return
-        }
-
-        this.PATH_ENDPOINTS = [];
-        this.FactString = "";
-
-        // 3x3 sections, each each 5x5
-        //TODO: Should eventually make random num of sections of random sizes
-        //let sections = {x:5, y:5}
-        //let section_size = 8
-
-        let ground_grid = this.generate_background(MAP_WIDTH,MAP_HEIGHT)
-        let props_grid = this.fill_with_tiles(MAP_WIDTH,MAP_HEIGHT, 1)
-        this.input.on('pointerdown', () => {
-            console.log(`${Math.floor(game.input.mousePointer.x / 16)}, ${Math.floor(game.input.mousePointer.y / 16)}`);
-            console.log(props_grid[Math.floor(game.input.mousePointer.y / 16)][Math.floor(game.input.mousePointer.x / 16)]);
-        });
-
-        let stack = [{ x: 0, y: 0, w: MAP_WIDTH, h: MAP_HEIGHT }];
-        
-        while (stack.length > 0) {
-            let { x, y, w, h } = stack.pop();
-        
-            if (w > this.SECTION_MAX_WIDTH || h > this.SECTION_MAX_HEIGHT) {
-                let splitVertical = Phaser.Math.Between(0, 1) === 0; // Randomly choose split direction
-
-                if (splitVertical) {
-                    if (w <= this.SECTION_MIN_WIDTH * 2) {
-                        splitVertical = false; // Force horizontal split if width is too small
-                    }
-                } else {
-                    if (h <= this.SECTION_MIN_HEIGHT * 2) {
-                        splitVertical = true; // Force vertical split if height is too small
-                    }
-                }
-
-                if (splitVertical) { //vertical split
-                    let split = Phaser.Math.Between(this.SECTION_MIN_WIDTH, Math.min(w - this.SECTION_MIN_WIDTH, this.SECTION_MAX_WIDTH));
-                    stack.push({ x: x, y: y, w: split, h: h });
-                    stack.push({ x: x + split, y: y, w: w - split, h: h });
-                } else { //horizontal split
-                    let split = Phaser.Math.Between(this.SECTION_MIN_HEIGHT, Math.min(h - this.SECTION_MIN_HEIGHT, this.SECTION_MAX_HEIGHT));
-                    stack.push({ x: x, y: y, w: w, h: split });
-                    stack.push({ x: x, y: y + split, w: w, h: h - split });
-                }
-
-            } else {
-                let rect = { x: x, y: y, w: w, h: h };
-                console.log(rect);
-                this.draw_debug_rect(rect);
-                props_grid = this.generate_section(props_grid, rect);
-            }
-        }
-
-        //Now that generation is complete we can build roads between sections
-        if (this.DEBUG_PATH) console.log("[PATH DEBUG] Path Endpoints: ", this.PATH_ENDPOINTS);
-
-        await this.generate_path(props_grid);
-        if (this.DEBUG_PATH) console.log("[PATH DEBUG] Path generation complete");
-
-        console.log(this.FactString);
-
-        let grids = [ground_grid, props_grid]
-        grids.forEach(grid => {
-            const map = this.make.tilemap({
-                data: grid,
-                tileWidth: 16,
-                tileHeight: 16
-            })
-            const tilesheet = map.addTilesetImage("tiny_town_tiles")
-            let layer = map.createLayer(0, tilesheet, 0, 0)
-            layer.setScale(SCALE);
-        });
-        if(this.DEBUG_COORDS){
-            for (let y = 0; y < MAP_HEIGHT; y+=5) {
-                for (let x = 0; x < MAP_WIDTH; x+=5) {
-                    let name = x.toString() + " " + y.toString()
-                    this.add.text(x* TILE_WIDTH,y * TILE_HEIGHT, name, {
-                        "fontSize" : 8,
-                        "backgroundColor" : "000000"
-                    })
-                }
-            }
-        }
-
-        this.runOnce = true;
     }
 
     update() {
@@ -181,19 +154,156 @@ class TinyTown extends Phaser.Scene {
         this.runOnce = false;
     }
 
+    async create() {
+        // If you need to lookup a tile, just swap this to true
+        // Replaces map generation with a display of the full tile set and each tile's id
+        // Debug get tile x, y from click
+        if (this.VIEW_LOOKUP) {
+            let w = 192;
+            let h = 176;
+            let size = 16;
+            let scale = SCALE;
+            let grid = this.generate_lookup_grid(w / size, h / size);
+            const map = this.make.tilemap({
+                data: grid,
+                tileWidth: 16,
+                tileHeight: 16,
+            });
+            const tilesheet = map.addTilesetImage("tiny_town_tiles");
+            let layer = map.createLayer(0, tilesheet, 0, 0);
+            layer.setScale(scale);
+            for (let y = 0; y < h * scale; y += size * scale) {
+                for (let x = 0; x < w * scale; x += size * scale) {
+                    let name = (x / size / scale + (y / size / scale) * (w / size)).toString();
+                    this.add.text(x, y, name, {
+                        fontSize: 8,
+                        backgroundColor: "000000",
+                    });
+                }
+            }
+            return;
+        }
+
+        this.SECTIONS = [];
+        this.GENERATED_SECTIONS = [];
+        this.PATH_ENDPOINTS = [];
+        this.FactString = "";
+        this.relationshipsText = "Relationships:\n";
+    
+        // 3x3 sections, each 5x5
+        let ground_grid = this.generate_background(MAP_WIDTH, MAP_HEIGHT);
+        let props_grid = this.fill_with_tiles(MAP_WIDTH, MAP_HEIGHT, 1);
+        this.input.on("pointerdown", () => {
+            console.log(
+                `${Math.floor(game.input.mousePointer.x / 16)}, ${Math.floor(game.input.mousePointer.y / 16)}`
+            );
+            console.log(
+                props_grid[Math.floor(game.input.mousePointer.y / 16)][
+                    Math.floor(game.input.mousePointer.x / 16)
+                ]
+            );
+        });
+    
+        let stack = [{ x: 0, y: 0, w: MAP_WIDTH, h: MAP_HEIGHT }];
+    
+        while (stack.length > 0) {
+            let { x, y, w, h } = stack.pop();
+    
+            if (w > this.SECTION_MAX_WIDTH || h > this.SECTION_MAX_HEIGHT) {
+                let splitVertical = Phaser.Math.Between(0, 1) === 0; // Randomly choose split direction
+    
+                if (splitVertical) {
+                    if (w <= this.SECTION_MIN_WIDTH * 2) {
+                        splitVertical = false; // Force horizontal split if width is too small
+                    }
+                } else {
+                    if (h <= this.SECTION_MIN_HEIGHT * 2) {
+                        splitVertical = true; // Force vertical split if height is too small
+                    }
+                }
+    
+                if (splitVertical) {
+                    // Vertical split
+                    let split = Phaser.Math.Between(
+                        this.SECTION_MIN_WIDTH,
+                        Math.min(w - this.SECTION_MIN_WIDTH, this.SECTION_MAX_WIDTH)
+                    );
+                    stack.push({ x: x, y: y, w: split, h: h });
+                    stack.push({ x: x + split, y: y, w: w - split, h: h });
+                } else {
+                    // Horizontal split
+                    let split = Phaser.Math.Between(
+                        this.SECTION_MIN_HEIGHT,
+                        Math.min(h - this.SECTION_MIN_HEIGHT, this.SECTION_MAX_HEIGHT)
+                    );
+                    stack.push({ x: x, y: y, w: w, h: split });
+                    stack.push({ x: x, y: y + split, w: w, h: h - split });
+                }
+            } else {
+                let rect = { x: x, y: y, w: w, h: h };
+                console.log(rect);
+                this.draw_debug_rect(rect);
+                props_grid = this.generate_section(props_grid, rect);
+            }
+        }
+    
+        // Now that generation is complete we can build roads between sections
+        if (this.DEBUG_PATH) console.log("[PATH DEBUG] Path Endpoints: ", this.PATH_ENDPOINTS);
+    
+        await this.generate_path(props_grid);
+        if (this.DEBUG_PATH) console.log("[PATH DEBUG] Path generation complete");
+    
+    
+        let grids = [ground_grid, props_grid];
+        grids.forEach((grid) => {
+            const map = this.make.tilemap({
+                data: grid,
+                tileWidth: 16,
+                tileHeight: 16,
+            });
+            const tilesheet = map.addTilesetImage("tiny_town_tiles");
+            let layer = map.createLayer(0, tilesheet, 0, 0);
+            layer.setScale(SCALE);
+        });
+    
+        if (this.DEBUG_COORDS) {
+            for (let y = 0; y < MAP_HEIGHT; y += 5) {
+                for (let x = 0; x < MAP_WIDTH; x += 5) {
+                    let name = x.toString() + " " + y.toString();
+                    this.add.text(x * TILE_WIDTH, y * TILE_HEIGHT, name, {
+                        fontSize: 8,
+                        backgroundColor: "000000",
+                    });
+                }
+            }
+        }
+    
+        // Generate relationships after all objects have been created
+        console.log("Before Generated Sections:");
+        console.table(this.GENERATED_SECTIONS);
+
+        const relationships = this.generate_relationships(this.GENERATED_SECTIONS);
+        console.log("Extracted Relationships:", relationships);
+        this.FactString += `\n${this.relationshipsText}`;
+        console.log(this.FactString);
+    
+        this.runOnce = true;
+    }
+
+
     async sendMapToBackend(map_description) {
         const canvas = game.context.canvas;
         const imageData = canvas.toDataURL('image/png');
-    
+
         const response = await fetch('http://localhost:3000/mapGenerated', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ 
-                image: imageData, 
+            body: JSON.stringify({
+                image: imageData,
                 description: map_description,
-                batchId: global.currentBatchStartTime 
+                batchId: global.currentBatchStartTime
             }),
         });
 
@@ -346,8 +456,38 @@ class TinyTown extends Phaser.Scene {
                 }
             }
         }
-        var description = "A forest"
+        let description = "A forest";
         this.add_fact_from_type(rect, description);
+        
+        // Manually define the center of the forest rectangle
+        const forestObject = {
+            name: "Forest",
+            rect: {
+                x: rect.x,
+                y: rect.y,
+                w: rect.w,
+                h: rect.h,
+            },
+            center: {
+                x: rect.x + rect.w / 2,
+                y: rect.y + rect.h / 2,
+            }, // Add the center with x and y
+        };
+        
+        // Draw a red dot at the center
+        if (this.DEBUG_DRAW) {
+            this.add.circle(
+                forestObject.center.x * TILE_WIDTH * SCALE,
+                forestObject.center.y * TILE_HEIGHT * SCALE,
+                2, // radius of the dot
+                0xFF0000 // red color
+            ).setDepth(10);
+        }
+            
+        
+        
+        this.GENERATED_SECTIONS.push(forestObject);
+        
         return {
             grid : grid,
             path_points : [],
@@ -439,6 +579,34 @@ class TinyTown extends Phaser.Scene {
             w: house_rect.w,
             h: house_rect.h}, description);
 
+        // Add the object to the GENERATED_SECTIONS array
+        const houseObject = {
+            name: "House",
+            rect: {
+                x: section_rect.x + house_rect.x,
+                y: section_rect.y + house_rect.y,
+                w: house_rect.w,
+                h: house_rect.h,
+            },
+            center: {
+                x: section_rect.x + house_rect.x + house_rect.w / 2,
+                y: section_rect.y + house_rect.y + house_rect.h / 2,
+            },
+        };
+
+        // Draw a red dot at the center
+        if (this.DEBUG_DRAW) {
+            this.add.circle(
+                houseObject.center.x * TILE_WIDTH * SCALE,
+                houseObject.center.y * TILE_HEIGHT * SCALE,
+                2, // radius of the dot
+                0xFF0000 // red color
+            ).setDepth(10);
+        }
+        
+
+        this.GENERATED_SECTIONS.push(houseObject);
+
 
         let door_global_position = {
             x : section_rect.x + house_rect.x + door_x,
@@ -525,6 +693,18 @@ class TinyTown extends Phaser.Scene {
         } else {
             return this.generate_single_fence(section_rect);
         }
+        // Add the object to the GENERATED_SECTIONS array
+        const fenceObject = {
+            name: "Fence",
+            rect: {
+                x: section_rect.x,
+                y: section_rect.y,
+                w: section_rect.w,
+                h: section_rect.h,
+            },
+        };
+        this.GENERATED_SECTIONS.push(fenceObject);
+        
     }
 
     generate_regular_fence(section_rect) {
@@ -597,7 +777,35 @@ class TinyTown extends Phaser.Scene {
             w: fence_rect.w,
             h: fence_rect.h
         }, description);
-    
+
+        // Add the object to the GENERATED_SECTIONS array
+        const regularFenceObject = {
+            name: "Regular Fence",
+            rect: {
+                x: section_rect.x + fence_rect.x,
+                y: section_rect.y + fence_rect.y,
+                w: fence_rect.w,
+                h: fence_rect.h
+            },
+            center: {
+                x: section_rect.x + fence_rect.x + fence_rect.w / 2,
+                y: section_rect.y + fence_rect.y + fence_rect.h / 2,
+            },
+        };
+
+        // Draw a red dot at the center
+        if (this.DEBUG_DRAW) {
+            this.add.circle(
+                regularFenceObject.center.x * TILE_WIDTH * SCALE,
+                regularFenceObject.center.y * TILE_HEIGHT * SCALE,
+                2, // radius of the dot
+                0xFF0000 // red color
+            ).setDepth(10);
+        }
+
+        this.GENERATED_SECTIONS.push(regularFenceObject);
+
+            
         let door_global_position = {
             x: section_rect.x + fence_rect.x + door_x,
             y: section_rect.y + fence_rect.y + (door_edge === "bottom" ? fence_h - 1 : 0),
@@ -729,7 +937,7 @@ class TinyTown extends Phaser.Scene {
             }
         }
     
-        let description = "A random L-shaped fence"
+        let description = "A random L-shaped fence";
         // Log the fence details
         this.add_fact_from_type({
             x: section_rect.x + start_x,
@@ -737,6 +945,33 @@ class TinyTown extends Phaser.Scene {
             w: horizontal_length,
             h: vertical_length
         }, description);
+        
+        // Add the object to the GENERATED_SECTIONS array
+        const randomFenceObject = {
+            name: "Random Fence",
+            rect: {
+                x: section_rect.x + start_x,
+                y: section_rect.y + start_y,
+                w: horizontal_length,
+                h: vertical_length,
+            },
+            center: {
+                x: section_rect.x + start_x + horizontal_length / 2,
+                y: section_rect.y + start_y + vertical_length / 2,
+            },
+        };
+        
+        // Draw a red dot at the center
+        if (this.DEBUG_DRAW) {
+            this.add.circle(
+                randomFenceObject.center.x * TILE_WIDTH * SCALE,
+                randomFenceObject.center.y * TILE_HEIGHT * SCALE,
+                2, // radius of the dot
+                0xFF0000 // red color
+            ).setDepth(10);
+        }
+        
+        this.GENERATED_SECTIONS.push(randomFenceObject);        
     
         return {
             grid: grid,
@@ -775,14 +1010,45 @@ class TinyTown extends Phaser.Scene {
             }
         }
     
-        let description = "A single line fence"
+        let description = "A single line fence";
         this.add_fact_from_type({
             x: section_rect.x + start_x,
             y: section_rect.y + start_y,
             w: isHorizontal ? length : 1,
             h: isHorizontal ? 1 : length
         }, description);
-    
+        
+        // Calculate midpoint based on orientation
+        const singleFenceObject = {
+            name: "Single Fence",
+            rect: {
+                x: section_rect.x + start_x,
+                y: section_rect.y + start_y,
+                w: isHorizontal ? length : 1,
+                h: isHorizontal ? 1 : length,
+            },
+            center: {
+                x: isHorizontal
+                    ? section_rect.x + start_x + length / 2
+                    : section_rect.x + start_x,
+                y: isHorizontal
+                    ? section_rect.y + start_y
+                    : section_rect.y + start_y + length / 2,
+            }, // Add the center with x and y
+        };
+        
+        // Draw a red dot at the midpoint
+        if (this.DEBUG_DRAW) {
+            this.add.circle(
+                singleFenceObject.center.x * TILE_WIDTH * SCALE,
+                singleFenceObject.center.y * TILE_HEIGHT * SCALE,
+                2, // radius of the dot
+                0xFF0000 // red color
+            ).setDepth(10);
+        }
+        
+        this.GENERATED_SECTIONS.push(singleFenceObject);
+        
         return {
             grid: grid,
             path_points: [],
