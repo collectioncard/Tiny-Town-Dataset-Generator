@@ -8,6 +8,7 @@ from csvMetaMaker import txt_to_csv
 
 import os
 import shutil
+from alive_progress import alive_bar
 
 def split_images(source_folder, data_folder="data", sub_name="/images", train_to_test_ratio = 10):
   """
@@ -18,34 +19,36 @@ def split_images(source_folder, data_folder="data", sub_name="/images", train_to
     source_folder: The path to the folder containing the images.
     data_folder: The name of the folder to create for train and test sets. Defaults to 'data'.
   """
+  with alive_bar(1000) as bar:
+    # Create the data folder (overwrites if it exists)
+    if os.path.exists(data_folder):
+        shutil.rmtree(data_folder)  # Remove existing data folder
+    os.makedirs(data_folder)
+    bar()
 
-  # Create the data folder (overwrites if it exists)
-  if os.path.exists(data_folder):
-    shutil.rmtree(data_folder)  # Remove existing data folder
-  os.makedirs(data_folder)
+    # Create train and test folders inside the data folder
+    train_folder = os.path.join(data_folder, "train"+sub_name)
+    test_folder = os.path.join(data_folder, "test"+sub_name)
+    os.makedirs(train_folder)
+    os.makedirs(test_folder)
+    bar()
+    image_count = 0
+    for filename in os.listdir(source_folder):
+        if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
+            source_path = os.path.join(source_folder, filename)
+            if is_file_size_below_thresh(source_path):
+                continue
+            image_count += 1
+            if image_count % train_to_test_ratio == 0:
+                destination_path = os.path.join(test_folder, filename)
+            else:
+                destination_path = os.path.join(train_folder, filename)
 
-  # Create train and test folders inside the data folder
-  train_folder = os.path.join(data_folder, "train"+sub_name)
-  test_folder = os.path.join(data_folder, "test"+sub_name)
-  os.makedirs(train_folder)
-  os.makedirs(test_folder)
-
-  image_count = 0
-  for filename in os.listdir(source_folder):
-    if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
-      source_path = os.path.join(source_folder, filename)
-      if is_file_size_below_thresh(source_path):
-        continue
-      image_count += 1
-      if image_count % train_to_test_ratio == 0:
-        destination_path = os.path.join(test_folder, filename)
-      else:
-        destination_path = os.path.join(train_folder, filename)
-
-      #print(destination_path, image_count)
-      shutil.copy(source_path, destination_path)
-      shutil.copy(source_path.replace('.png','.txt'), destination_path.replace('.png','.txt'))
-  print(f"Created dataset folder with {image_count} files, {image_count//train_to_test_ratio} test and {image_count-image_count//train_to_test_ratio} train")
+            #print(destination_path, image_count)
+            shutil.copy(source_path, destination_path)
+            shutil.copy(source_path.replace('.png','.txt'), destination_path.replace('.png','.txt'))
+            bar()
+    print(f"Created dataset folder with {image_count} files, {image_count//train_to_test_ratio} test and {image_count-image_count//train_to_test_ratio} train")
 
 
 def is_file_size_below_thresh(file_path, min_size = 5*1024):
@@ -85,7 +88,8 @@ def delete_all_txt_files(folder_path, verbose = False):
 if __name__ == "__main__":
   # this has a failed generation and was my test
   # source_folder ="./mapOutput/1737682480303"
-  source_folder ="./mapOutput/1737686210274"
+  # large data 1000 is 1737686210274
+  source_folder ="./mapOutput/1737686107279"
   dest_folder = "./mapOutput/dataset"
   sub_name = ""
   sub_dir = ""+sub_name # put a / in the '' if using sub name
