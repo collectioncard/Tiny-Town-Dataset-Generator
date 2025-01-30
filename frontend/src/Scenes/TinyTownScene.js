@@ -641,6 +641,13 @@ class TinyTown extends Phaser.Scene {
     //returns tilegrid with single tile decor
     generate_decor(rect) {
         const DECOR_TILES = [106, 57, 130, 94, 95, 131, 107, 29,27, 28 ]; //tile ids
+        
+        //tile ids
+        const MULTI_TILE_DECOR = {
+            orangeTree: { top: 3, bottom: 15 },
+            greenTree: { top: 4, bottom: 16 },
+        };
+
         const DECOR_NAME = {
             27: "orange tree",
             28: "green tree",
@@ -652,17 +659,43 @@ class TinyTown extends Phaser.Scene {
             107: "bag",
             130: "bucket empty",
             131: "bucket full"
+
+            //tall tree tiles
+            // 3: "orange tree",  //orange top
+            // 15: "orange tree", //orange bottom
+            // 4: "green tree",   //green top
+            // 16: "green tree"  //green bottom
         }
         const decor_chance = 0.03;
+        //for tall trees
+        const multi_tile_chance = 0.01;
 
         let grid = this.fill_with_tiles(rect.w, rect.h, -1);
         let description = "An area with "
         for (let y = 0; y < rect.h; y++) {
             for (let x = 0; x < rect.w; x++) {
+                //tall tree logic
+                if (Math.random() < multi_tile_chance && y + 1 < rect.h) {
+                    if (grid[y][x] === -1 && grid[y + 1][x] === -1) {
+                        const treeType = Math.random() < 0.5 ? "orangeTree" : "greenTree";
+                        grid[y][x] = MULTI_TILE_DECOR[treeType].top;
+                        grid[y + 1][x] = MULTI_TILE_DECOR[treeType].bottom;
+   
+                        //log only bottom tile for description
+                        this.add_fact_from_type({
+                            x: rect.x + x,
+                            y: rect.y + y + 1,
+                            w: 1,
+                            h: 2,
+                        }, `${treeType === "orangeTree" ? "orange tree" : "green tree"}`);
+                        description += `${treeType === "orangeTree" ? "orange tree" : "green tree"}, `;
+                        continue;
+                    }
+                }
+   
                 if (Math.random() < decor_chance) {
                     let decor = Phaser.Utils.Array.GetRandom(DECOR_TILES)
                     grid[y][x] = decor;
-                    //TODO: facts
                     this.add_fact_from_type({
                         x: rect.x + x,
                         y: rect.y + y,
@@ -673,6 +706,7 @@ class TinyTown extends Phaser.Scene {
                 }
             }
         }
+
   
         return {
             grid: grid,
