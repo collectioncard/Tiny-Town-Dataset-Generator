@@ -23,6 +23,8 @@ class TinyTown extends Phaser.Scene {
     SECTIONS = []
     GENERATED_SECTIONS = []
 
+
+
     FactString = "";
     relationshipsText = "Relationships:\n";
 
@@ -69,7 +71,7 @@ class TinyTown extends Phaser.Scene {
             }
             
             // Initialize the group for objA
-            groupedRelationships[`${objA.name} at (${objA.center.x}, ${objA.center.y})`] = [];
+            groupedRelationships[`${objA.name} at (${objA.rect.x}, ${objA.rect.y})`] = [];
     
             objects.forEach((objB, indexB) => {
                 if (indexA === indexB) return; // Skip comparing the same object
@@ -111,8 +113,8 @@ class TinyTown extends Phaser.Scene {
                 relationships.push(description);
 
                 // Add relationship to the group for objA
-                groupedRelationships[`${objA.name} at (${objA.center.x}, ${objA.center.y})`].push(
-                    `- is ${position} ${objB.name} at (${objB.center.x}, ${objB.center.y}) (distance: ${distance} tiles).`
+                groupedRelationships[`${objA.name} at (${objA.rect.x}, ${objA.rect.y})`].push(
+                    `- is ${position} ${objB.name} at (${objB.rect.x}, ${objB.rect.y}) (distance: ${distance} tiles).`
                 );
     
                 // Debug: Log the relationship details
@@ -141,7 +143,17 @@ class TinyTown extends Phaser.Scene {
         
         return relationships;
     }
-    
+
+    init() {
+        this.SECTIONS = [];
+        this.GENERATED_SECTIONS = [];
+        this.PATH_ENDPOINTS = [];
+        this.FactString = "";
+
+        this.FOREST_COUNT = 0;
+        this.HOUSE_COUNT = 0;
+    }
+
     preload() {
         this.load.setPath("./assets/");
         this.load.image("tiny_town_tiles", "kenny-tiny-town-tilemap-packed.png");
@@ -184,11 +196,7 @@ class TinyTown extends Phaser.Scene {
             return;
         }
 
-        this.SECTIONS = [];
-        this.GENERATED_SECTIONS = [];
-        this.PATH_ENDPOINTS = [];
-        this.FactString = "";
-        this.relationshipsText = "Relationships:\n";
+        this.init();
     
         // 3x3 sections, each 5x5
         let ground_grid = this.generate_background(MAP_WIDTH, MAP_HEIGHT);
@@ -388,6 +396,8 @@ class TinyTown extends Phaser.Scene {
             rect : rect,
         }
     }
+
+    FOREST_COUNT = 0;
     //returns a tile grid containing a forest
     generate_forest(rect){
         
@@ -456,12 +466,11 @@ class TinyTown extends Phaser.Scene {
                 }
             }
         }
-        let description = "A forest";
-        this.add_fact_from_type(rect, description);
+
         
         // Manually define the center of the forest rectangle
         const forestObject = {
-            name: "Forest",
+            name: `Forest ${this.FOREST_COUNT}`,
             rect: {
                 x: rect.x,
                 y: rect.y,
@@ -473,7 +482,9 @@ class TinyTown extends Phaser.Scene {
                 y: rect.y + rect.h / 2,
             }, // Add the center with x and y
         };
-        
+        let description = `${forestObject.name}`;
+        this.add_fact_from_type(rect, description);
+
         // Draw a red dot at the center
         if (this.DEBUG_DRAW) {
             this.add.circle(
@@ -487,7 +498,8 @@ class TinyTown extends Phaser.Scene {
         
         
         this.GENERATED_SECTIONS.push(forestObject);
-        
+        this.FOREST_COUNT++;
+
         return {
             grid : grid,
             path_points : [],
@@ -501,6 +513,7 @@ class TinyTown extends Phaser.Scene {
     HOUSE_MIN_W = 3
     HOUSE_MIN_H = 3
 
+    HOUSE_COUNT = 0;
     //returns a tile grid containing a house with padding within the section
     generate_house(section_rect){
         let pad = 1
@@ -571,17 +584,9 @@ class TinyTown extends Phaser.Scene {
             h: house_rect.h
         }, 0x0000FF)
 
-        let description = "A " + (alt == 0 ? "gray" : "brown") + " House with " + window_count.toString() + " windows"
-
-        this.add_fact_from_type({
-            x: section_rect.x + house_rect.x,
-            y: section_rect.y + house_rect.y,
-            w: house_rect.w,
-            h: house_rect.h}, description);
-
         // Add the object to the GENERATED_SECTIONS array
         const houseObject = {
-            name: "House",
+            name: `House ${this.HOUSE_COUNT}`,
             rect: {
                 x: section_rect.x + house_rect.x,
                 y: section_rect.y + house_rect.y,
@@ -593,6 +598,10 @@ class TinyTown extends Phaser.Scene {
                 y: section_rect.y + house_rect.y + house_rect.h / 2,
             },
         };
+
+        let description = houseObject.name + " is a " + (alt == 0 ? "gray" : "brown") + " House with " + window_count.toString() + " windows"
+
+        this.add_fact_from_type(houseObject.rect, description);
 
         // Draw a red dot at the center
         if (this.DEBUG_DRAW) {
@@ -606,7 +615,7 @@ class TinyTown extends Phaser.Scene {
         
 
         this.GENERATED_SECTIONS.push(houseObject);
-
+        this.HOUSE_COUNT++;
 
         let door_global_position = {
             x : section_rect.x + house_rect.x + door_x,
@@ -684,6 +693,9 @@ class TinyTown extends Phaser.Scene {
         };
     }
 
+    REG_FENCE_COUNT = 0;
+    RAND_FENCE_COUNT = 0;
+
     generate_fence(section_rect) {
         const rand = Math.random();
         if (rand < 0.6) {
@@ -693,18 +705,6 @@ class TinyTown extends Phaser.Scene {
         } else {
             return this.generate_single_fence(section_rect);
         }
-        // Add the object to the GENERATED_SECTIONS array
-        const fenceObject = {
-            name: "Fence",
-            rect: {
-                x: section_rect.x,
-                y: section_rect.y,
-                w: section_rect.w,
-                h: section_rect.h,
-            },
-        };
-        this.GENERATED_SECTIONS.push(fenceObject);
-        
     }
 
     generate_regular_fence(section_rect) {
@@ -780,7 +780,7 @@ class TinyTown extends Phaser.Scene {
 
         // Add the object to the GENERATED_SECTIONS array
         const regularFenceObject = {
-            name: "Regular Fence",
+            name: "Closed Fence",
             rect: {
                 x: section_rect.x + fence_rect.x,
                 y: section_rect.y + fence_rect.y,
@@ -948,7 +948,7 @@ class TinyTown extends Phaser.Scene {
         
         // Add the object to the GENERATED_SECTIONS array
         const randomFenceObject = {
-            name: "Random Fence",
+            name: "L-shaped Fence",
             rect: {
                 x: section_rect.x + start_x,
                 y: section_rect.y + start_y,
@@ -1020,7 +1020,7 @@ class TinyTown extends Phaser.Scene {
         
         // Calculate midpoint based on orientation
         const singleFenceObject = {
-            name: "Single Fence",
+            name: "Single Fence Line",
             rect: {
                 x: section_rect.x + start_x,
                 y: section_rect.y + start_y,
