@@ -54,8 +54,10 @@ def txt_to_csv(folder_path, csv_path, origin_folder):
           txt_to_csv(os.path.join(folder_path, filename), csv_path, full_path)
         bar()
 
+# manually ctrl f and replace
 # Distractor1,Distractor2,Distractor3
 # '; ' with ','
+# line 396 had an extra nothing on it at the end
 
 def create_qa_csv(directory, out_name):
     """
