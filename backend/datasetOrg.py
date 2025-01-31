@@ -160,7 +160,8 @@ if __name__ == "__main__":
   source_folder ="./mapOutput/datasetbase"
   dest_folder = "./mapOutput/dataset"
   meta_name = "details.csv"
-  qa_name = "metadata.csv"
+  qa_name = "qa.csv"
+  final_name = "metadata.csv"
   sub_name = ""
   sub_dir = ""+sub_name # put a / in the '' if using sub name
   split_images(source_folder, dest_folder, ""+sub_dir, 8)
@@ -174,6 +175,8 @@ if __name__ == "__main__":
   #fix_columns_distractors(dest_folder+"/train"+sub_dir)
   create_qa_csv(dest_folder+"/test"+sub_dir, qa_name)
   create_qa_csv(dest_folder+"/train"+sub_dir, qa_name)
+  add_row_index_to_csv(dest_folder+"/test"+sub_dir+"/"+qa_name,dest_folder+"/test"+sub_dir+"/"+final_name)
+  add_row_index_to_csv(dest_folder+"/train"+sub_dir+"/"+qa_name,dest_folder+"/train"+sub_dir+"/"+final_name)
   delete_all_txt_files(dest_folder)
   print("Dataset created at ", dest_folder)
   

@@ -59,6 +59,40 @@ def txt_to_csv(folder_path, csv_path, origin_folder):
 # '; ' with ','
 # line 396 had an extra nothing on it at the end
 
+def add_row_index_to_csv(input_file, output_file, header_name="id"):  # Added header_name parameter
+    """Adds a row index as the first column to a CSV file with a specified header.
+
+    Args:
+        input_file: Path to the input CSV file.
+        output_file: Path to the output CSV file.
+        header_name: The name of the header for the index column (default: "id").
+    """
+
+    try:
+        with open(input_file, 'r', newline='', encoding='utf-8') as infile, \
+                open(output_file, 'w', newline='', encoding='utf-8') as outfile:
+
+            reader = csv.reader(infile)
+            writer = csv.writer(outfile)
+
+            # Write the header row
+            writer.writerow([header_name] + next(reader))  # Add header and original header
+
+            row_index = 1  # Start index from 1
+
+            for row in reader:
+                new_row = [row_index] + row  # Prepend row index
+                writer.writerow(new_row)
+                row_index += 1
+
+    except FileNotFoundError:
+        print(f"Error: Input file '{input_file}' not found.")
+    except StopIteration: # Handle empty input file
+        print(f"Error: Input file '{input_file}' is empty.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+
 def create_qa_csv(directory, out_name):
     """
     Creates a qa.csv file with 'id' (from the CSV) and 'filename' 
@@ -90,12 +124,7 @@ def create_qa_csv(directory, out_name):
                 df = pd.read_csv(csv_file)
                 filename = os.path.basename(files['image'])
 
-                # Check if 'id' column exists, if not, create a default one
-                if 'id' not in df.columns:
-                    print(f"Warning: 'id' column not found in {csv_file}. Creating a default id.")
-                    df.insert(0, 'id', range(len(df))) # Add a default id based on row number
-
-                df.insert(1, 'file_name', filename)
+                df.insert(0, 'file_name', filename)
                 qa_data.append(df)
 
             except FileNotFoundError:
