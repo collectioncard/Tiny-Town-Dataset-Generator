@@ -5,10 +5,9 @@
 # https://huggingface.co/datasets/SentientDragon5/TinyTown20x20count100
 
 # pip install alive_progress
+# pip install pandas
 
-
-from csvMetaMaker import txt_to_csv
-from csvMetaMaker import count_files_folders
+from csvMetaMaker import *
 
 import os
 import shutil
@@ -53,6 +52,7 @@ def split_images(source_folder, data_folder="data", sub_name="/images", train_to
             #print(destination_path, image_count)
             shutil.copy(source_path, destination_path)
             shutil.copy(source_path.replace('.png','.txt'), destination_path.replace('.png','.txt'))
+            shutil.copy(source_path.replace('.png','.csv'), destination_path.replace('.png','.csv'))
             bar()
     print(f"Created dataset folder with {image_count} files, {image_count//train_to_test_ratio} test and {image_count-image_count//train_to_test_ratio} train")
 
@@ -141,7 +141,8 @@ def delete_all_txt_files(folder_path, verbose = False):
   #with alive_bar(count) as bar:
   for filename in os.listdir(folder_path):
         file_path = os.path.join(folder_path, filename)
-        if filename.endswith(".txt"):
+        if filename.endswith(".txt") or filename.endswith(".csv"):
+            if filename.__contains__("qa") or filename.__contains__("metadata"): continue
             os.remove(file_path)
             if verbose: print(f"Deleted: {file_path}")
             #bar()
@@ -156,17 +157,23 @@ if __name__ == "__main__":
   chunking = False
   # Hugging face only allows uploads in size of 200 files per upload. this packages the files into folders of 200, so you
   # can manually upload. not ideal, but it gets the job done. use chunking to turn this on.
-  source_folder ="./mapOutput/1737686210274"
+  source_folder ="./mapOutput/datasetbase"
   dest_folder = "./mapOutput/dataset"
+  meta_name = "details.csv"
+  qa_name = "metadata.csv"
   sub_name = ""
   sub_dir = ""+sub_name # put a / in the '' if using sub name
   split_images(source_folder, dest_folder, ""+sub_dir, 8)
   print("Images copied and split")
-  txt_to_csv(dest_folder+"/test"+sub_dir, dest_folder+"/test"+"/metadata.csv", sub_name)
+  txt_to_csv(dest_folder+"/test"+sub_dir, dest_folder+"/test"+"/"+meta_name, sub_name)
   print("Test metadata complete")
-  txt_to_csv(dest_folder+"/train"+sub_dir, dest_folder+"/train"+"/metadata.csv", sub_name)
+  txt_to_csv(dest_folder+"/train"+sub_dir, dest_folder+"/train"+"/"+meta_name, sub_name)
   print("Train metadata complete")
   #txt_to_csv(dest_folder, dest_folder+"/metadata.csv",dest_folder)
+  #fix_columns_distractors(dest_folder+"/test"+sub_dir)
+  #fix_columns_distractors(dest_folder+"/train"+sub_dir)
+  create_qa_csv(dest_folder+"/test"+sub_dir, qa_name)
+  create_qa_csv(dest_folder+"/train"+sub_dir, qa_name)
   delete_all_txt_files(dest_folder)
   print("Dataset created at ", dest_folder)
   
