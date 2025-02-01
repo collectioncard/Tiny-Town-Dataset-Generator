@@ -5,6 +5,8 @@ from alive_progress import alive_bar
 import pandas as pd
 import glob
 import re
+import shutil
+
 
 # pip install alive_progress
 
@@ -183,3 +185,73 @@ def fix_columns_distractors(directory):
             print(f"Error parsing CSV: {csv_file}. Check the delimiter and encoding.")
         except Exception as e:
             print(f"An error occurred processing {csv_file}: {e}")
+
+def duplicate_images_and_update_csv(csv_filepath, image_directory):
+    """
+    Duplicates images based on filename occurrences and updates the CSV file.
+
+    Args:
+        csv_filepath: Path to the CSV file.
+        image_directory: Path to the directory containing the images.
+    """
+
+    try:
+        df = pd.read_csv(csv_filepath)
+    except FileNotFoundError:
+        print(f"Error: CSV file not found at {csv_filepath}")
+        return
+
+    image_counts = {}  # Keep track of image occurrences
+    updated_rows = []
+
+    for index, row in df.iterrows():
+        original_filename = row['file_name']
+        base_filename, ext = os.path.splitext(original_filename)  # Split filename and extension
+
+        if base_filename not in image_counts:
+            image_counts[base_filename] = 0
+
+        count = image_counts[base_filename]
+        new_filename = f"{base_filename}_{count}{ext}"
+        image_counts[base_filename] += 1
+
+        original_filepath = os.path.join(image_directory, original_filename)
+        new_filepath = os.path.join(image_directory, new_filename)
+
+        try:
+            # Check if the original file exists before copying.
+            if os.path.exists(original_filepath):
+                shutil.copy2(original_filepath, new_filepath) #Copy metadata as well
+            else:
+                print(f"Warning: Image file not found: {original_filepath}")
+
+        except FileNotFoundError:
+            print(f"Error: Image file not found at {original_filepath}")
+            return
+        except Exception as e:
+            print(f"An error occurred during file copy: {e}")
+            return
+
+        #Update the file_name in the dataframe row
+        row['file_name'] = new_filename
+        updated_rows.append(row)
+
+
+    # Remove the original files after processing
+    for base_filename in image_counts:
+        original_filepath = os.path.join(image_directory, base_filename + os.path.splitext(df['file_name'][0])[1]) #Assumes all files have the same extension
+        try:
+            if os.path.exists(original_filepath):
+              os.remove(original_filepath)
+        except FileNotFoundError:
+            print(f"Warning: Original Image file not found: {original_filepath}")
+        except Exception as e:
+            print(f"An error occurred during original file removal: {e}")
+
+
+    updated_df = pd.DataFrame(updated_rows)
+    try:
+        updated_df.to_csv(csv_filepath, index=False)  # Overwrite the original CSV
+        print(f"CSV file updated successfully at {csv_filepath}")
+    except Exception as e:
+        print(f"Error writing to CSV: {e}")
