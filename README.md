@@ -14,4 +14,12 @@ To run:
 2.  `npm install`
 3.  `npm run tinytown_generator`
 
+## QA Maker
+Automatically generates a question and answer set for each map created by the TinyTown Generator. Questions are not guaranteed to be correct and should be reviewed by hand.
 
+This uses structured outputs and is designed to be used with GPT 4o. You'll need to provide api keys in main.ts.
+
+To run: 
+1.  `cd qaMaker`
+2. `npm install`
+3. `npm run qa_maker`
